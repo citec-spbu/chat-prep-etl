@@ -1,0 +1,17 @@
+name: Branch Name Check
+on: [pull_request]
+
+jobs:
+  check-name:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Branch Name
+        run: |
+          # Регулярное выражение: feat/..., fix/..., research/..., docs/...
+          PATTERN="^(feat|fix|research|docs)\/[a-z0-9._-]+$"
+          BRANCH_NAME="${{ github.head_ref }}"
+          if [[ ! $BRANCH_NAME =~ $PATTERN ]]; then
+            echo "ERROR: Неверное имя ветки '$BRANCH_NAME'."
+            echo "Используйте префиксы: feat/, fix/, research/ или docs/."
+            exit 1
+          fi
