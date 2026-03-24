@@ -1,0 +1,169 @@
+import json
+import re
+import sys
+from pathlib import Path
+
+import warnings
+warnings.filterwarnings("ignore", message=".*pkg_resources.*")
+
+# Фикс для Python 3.12+ (pkg_resources)
+try:
+    import pkg_resources
+except ImportError:
+    try:
+        from pip._vendor import pkg_resources
+
+        sys.modules["pkg_resources"] = pkg_resources
+    except ImportError:
+        pass
+
+from natasha import (
+    Segmenter, MorphVocab, NewsEmbedding,
+    NewsNERTagger, Doc
+)
+
+
+class TelegramAnonymizer:
+    def __init__(self):
+        self.segmenter = Segmenter()
+        self.morph_vocab = MorphVocab()
+        self.emb = NewsEmbedding()
+        self.ner_tagger = NewsNERTagger(self.emb)
+
+        self.mapping = {}
+        self.entities = {}
+        self.counters = {"PER": 1, "LOC": 1, "ORG": 1, "PHONE": 1, "EMAIL": 1, "URL": 1}
+
+    def get_label(self, text, entity_type):
+        if not text: return text
+        key = (text.strip().lower(), entity_type)
+        if key not in self.mapping:
+            count = self.counters.get(entity_type, 1)
+            self.mapping[key] = f"[{entity_type} {count}]"
+            self.counters[entity_type] = count + 1
+            self.entities[key[0]] = self.mapping[key]
+        return self.mapping[key]
+
+    def regex_anonymize(self, text):
+        """Очистка телефонов, почты и ссылок"""
+        if not isinstance(text, str): return text
+
+        # 1. Emails
+        email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+        text = re.sub(email_pattern, lambda m: self.get_label(m.group(), "EMAIL"), text)
+
+        # 2. URLs (http, https, t.me)
+        url_pattern = r'https?://[^\s<>"]+|www\.[^\s<>"]+|t\.me/[^\s<>"]+'
+        text = re.sub(url_pattern, lambda m: self.get_label(m.group(), "URL"), text)
+
+        # 3. Телефоны
+        phone_pattern = r'\+?\d[\d\-\(\) ]{7,14}\d'
+        text = re.sub(phone_pattern, lambda m: self.get_label(m.group(), "PHONE"), text)
+
+        return text
+
+    def process_text(self, text):
+        if not isinstance(text, str) or not text:
+            return text
+
+        # Сначала RegEx (почта, ссылки, телефоны)
+        text = self.regex_anonymize(text)
+
+        # Затем Natasha (имена, города)
+        doc = Doc(text)
+        doc.segment(self.segmenter)
+        doc.tag_ner(self.ner_tagger)
+
+        spans = sorted(doc.spans, key=lambda x: x.start, reverse=True)
+        for span in spans:
+            span.normalize(self.morph_vocab)
+            label = self.get_label(span.normal or span.text, span.type)
+            text = text[:span.start] + label + text[span.stop:]
+
+        return text
+
+    def process_text_again(self, text):
+        if not isinstance(text, str) or not text:
+            return text
+
+        for entity in self.entities.keys():
+            if entity not in text.lower(): continue
+            text = re.sub(re.escape(entity), self.entities[entity], text, flags=re.IGNORECASE)
+            # text = re.sub(entity, self.entities[entity_name], text)
+
+        return text
+
+    def first_step(self, data):
+        for msg in data.get('messages', []):
+            # Анонимизация основного контента
+            if 'text' in msg:
+                t = msg['text']
+                if isinstance(t, str):
+                    msg['text'] = self.process_text(t)
+                elif isinstance(t, list):
+                    for item in t:
+                        if isinstance(item, dict) and 'text' in item:
+                            item['text'] = self.process_text(item['text'])
+                        elif isinstance(item, str):
+                            idx = t.index(item)
+                            t[idx] = self.process_text(item)
+
+            # Анонимизация метаданных отправителя
+            for field in ['from', 'actor']:
+                if field in msg and isinstance(msg[field], str):
+                    msg[field] = self.get_label(msg[field], "PER")
+        return data
+
+    def second_step(self, data):
+        for msg in data.get('messages', []):
+            # Анонимизация основного контента
+            if 'text' in msg:
+                t = msg['text']
+                if isinstance(t, str):
+                    msg['text'] = self.process_text_again(t)
+                elif isinstance(t, list):
+                    for item in t:
+                        if isinstance(item, dict) and 'text' in item:
+                            item['text'] = self.process_text_again(item['text'])
+                        elif isinstance(item, str):
+                            idx = t.index(item)
+                            t[idx] = self.process_text_again(item)
+        return data
+
+    def run(self, input_file, output_file):
+        try:
+            with open(input_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except FileNotFoundError:
+            print(f"Ошибка: Файл {input_file} не найден.")
+            return
+
+        data = self.first_step(data)
+        data = self.second_step(data)
+
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+
+        print(f"Обработано и сохранено в {output_file}")
+        # вывод найденных сущностей с ключами
+        # print(self.entities)
+
+
+def main():
+    argv = sys.argv[1:]
+    if len(argv) < 2:
+        print("Ожидается два аргумента")
+        return
+    if len(argv) > 2:
+        print("Слишком много аргументов")
+        return
+
+    in_file = Path(argv[0]) if len(argv) else Path("data/samples/example_tg_import.json")
+    out_file = Path(argv[1]) if len(argv) == 2 else in_file.with_name(in_file.stem + "_anonymised" + in_file.suffix)
+
+    anonymizer = TelegramAnonymizer()
+    anonymizer.run(in_file, out_file)
+
+
+if __name__ == "__main__":
+    main()
