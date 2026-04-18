@@ -22,7 +22,7 @@ class IRetriever(ABC):
         """Sends request to db and returns response with docs"""
         pass
 
-class ILogger(ABC):
+class IRegistry(ABC):
     """Interface for versioning the experiments"""
 
     @abstractmethod
@@ -31,11 +31,11 @@ class ILogger(ABC):
         pass
 
     @abstractmethod
-    def check(self, experiment: Experiment) -> bool:
+    def check(self, experiment: Experiment) -> Experiment:
         """
         Checks the originality of the experiment`s configuration.
-        True - exists, don`t repeat
-        False - doesn`t exist, provide it and save
+        not-None - exists, don`t repeat
+        None - doesn`t exist, provide it and save
         """
         pass
     

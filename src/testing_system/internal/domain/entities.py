@@ -5,7 +5,10 @@ from typing import Optional, List, Any, Dict
 
 @dataclass
 class Question:
-    """The question for the assistant"""
+    """
+    The question for the assistant
+    TODO there should be system prompt, i think
+    """
     id: str
     text: str
     retrieved_context_id: Optional[List[str]] = None # for RECALL
@@ -47,7 +50,7 @@ class Experiment:
     config: Dict[str, Any]
     questions: List[Question]
     answers: List[Answer]
-    metrics: List[MetricValue]
+    metrics: List[List[MetricValue]]
     started_at: datetime
     finished_at: Optional[datetime] = None
 
