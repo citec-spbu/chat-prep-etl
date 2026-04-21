@@ -1,36 +1,54 @@
 import json
-from telethon import TelegramClient
+from telethon import TelegramClient, events
 import socks
+import asyncio
+from dotenv import load_dotenv
+import os
 
-with open('config.txt', 'r') as f:
-    # Читаем строку, разделяем по знаку "=" и берем правую часть
-    api_id = int(f.readline().split('=')[1].strip())
-    api_hash = f.readline().split('=')[1].strip()
-    chat_username = f.readline().split('=')[1].strip()  # Читаем имя пользователя чата
 
-proxy = (socks.SOCKS5, '127.0.0.1', 10808)  # Пример прокси, если нужно       
+# Бд еще в разработке, пока не используем
+# from internal.adapters.vector_db import QdrantAdapter, COLLECTION, PointStruct
+# from internal.domain.services import Embedder
+
+
+load_dotenv()
+api_id = int(os.getenv('API_ID'))  
+api_hash = os.getenv('API_HASH')  
+chat_username = os.getenv('CHAT_USERNAME')  
+
+proxy = (socks.SOCKS5, '127.0.0.1', 10808)        
 
 client = TelegramClient('session_name', api_id, api_hash,proxy=proxy)
+# qdrant = QdrantAdapter()
+# embedder = Embedder()
+
+# qdrant.get_collection(COLLECTION)  # Проверяем коллекцию, если нет - создаем
+
+@client.on(events.NewMessage(chats=chat_username))
+async def handler(event):
+    text = event.message.message
+    if not text:
+        return
+    #emb = await embed_text(text)
+   # point = PointStruct(
+        id=event.message.id,
+        #vector=emb,
+        payload={"text": text, "chat_id": event.chat_id} #)
+    # qdrant.upsert(COLLECTION, points=[point])
+
+async def sync_history():
+    #last_id = qdrant.get_last_id()
+    last_id = 0
+    async for message in client.iter_messages(chat_username, min_id=last_id, limit=100):
+        if message.text:
+            print(f"[Sync] Подгружаем старое сообщение: {message.id}")
+
+
 
 async def main():
-    data = []
-    # Получаем сущность чата
-    async for message in client.iter_messages(chat_username, limit=100):
-        # Формируем структуру данных
-        msg_data = {
-            "id": message.id,
-            "date": str(message.date),
-            "sender_id": message.sender_id,
-            "text": message.text,
-            "is_reply": message.is_reply,
-        }
-        data.append(msg_data)
+    await client.start()
+    await sync_history()
+    await client.run_until_disconnected()
 
-    # Сохраняем в JSON
-    with open('chat_history.json', 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-    
-    print("Готово! Данные сохранены в chat_history.json")
-
-with client:
-    client.loop.run_until_complete(main())
+if __name__ == "__main__":
+    asyncio.run(main())
