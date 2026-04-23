@@ -210,5 +210,7 @@ __marimo__/
 
 #Main
 /data
+qdrant_storage/
 
 Ediks_session.session
+media/
