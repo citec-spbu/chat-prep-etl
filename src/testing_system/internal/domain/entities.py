@@ -20,7 +20,7 @@ class Answer:
     id: str
     text: str
     retrieved_context: List[str] # ID of the documents used
-    token_count: int
+    token_count: int 
     latency_ms: float 
     metadata: Optional[Dict[str,Any]] = None
 
@@ -48,9 +48,9 @@ class Experiment:
     id: str
     name: str
     config: Dict[str, Any]
-    questions: List[Question]
-    answers: List[Answer]
-    metrics: List[List[MetricValue]]
+    question: List[Question]
+    answer: List[Answer]
+    metrics: List[MetricValue]
     started_at: datetime
     finished_at: Optional[datetime] = None
 
@@ -58,7 +58,7 @@ class Experiment:
         self.answers.append(answer)
     
     def add_metric(self, metric: MetricValue) -> None:
-        self.answers.append(metric)
+        self.metrics.append(metric)
 
     def is_complete(self) -> bool:
-        return len(self.answers) == len(self.questions)
+        return len(self.answers) == len(self.questions) and len(self.metrics) == len(self.questions)
