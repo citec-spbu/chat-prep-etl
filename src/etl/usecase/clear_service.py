@@ -1,6 +1,8 @@
 import re
 import emoji
 
+from src.etl.domain.value_objects import MessageMetadata
+
 def remove_emoji(text):
     return emoji.replace_emoji(text, replace='')
 
@@ -52,32 +54,25 @@ def replace_entities(text):
 # ----------------------------
 # Обработка одного сообщения
 # ----------------------------
-def process_message(msg):
+def process_message(msg: MessageMetadata):
     #извлекаем текст из поля
-    text = msg.get("text", "")
-
-    #проверка явл ли текст строко, если нет меняем на строку
-    if not isinstance(text, str):
-        text = str(text)
+    text = msg.text or ""
 
     #чистим текст
     text = replace_entities(text)
     text = clean_text(text)
-
-    def valid_message(text):
-        return bool(text.strip())
     
     #проверка не остался после чистки текст пустой
-    if not valid_message(text):
+    if not text.strip():
         return None
 
     #наш результат
-    return {
-        "id": msg.get("id"),
-        "date": msg.get("date"),
-        "text": text
-    }
-
+    return MessageMetadata(
+        chat_id = msg.chat_id,
+        sender_id = msg.sender_id,
+        text = text,
+        attached_files = msg.attached_files
+    )
 
 # ----------------------------
 # Обработка всего списка
