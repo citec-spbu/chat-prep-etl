@@ -90,9 +90,12 @@ class TelegramAnonymizer:
         if not isinstance(text, str) or not text:
             return text
 
-        for entity in self.entities.keys():
-            if entity not in text.lower(): continue
-            text = re.sub(re.escape(entity), self.entities[entity], text, flags=re.IGNORECASE)
+        sorted_entities = sorted(self.entities.keys(), key=len, reverse=True)
+
+        for entity in sorted_entities:
+            if entity in text.lower():
+                pattern = re.compile(re.escape(entity), re.IGNORECASE)
+                text = pattern.sub(self.entities[entity], text)
 
         return text
 
