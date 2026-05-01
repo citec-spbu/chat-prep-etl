@@ -1,6 +1,6 @@
 from typing import Any, List
-from src.etl.internal.domain.interfaces import IParser
-from src.etl.internal.domain.value_objects import MessageMetadata
+from src.etl.domain.interfaces import IParser
+from src.etl.domain.value_objects import MessageMetadata
 from telethon import TelegramClient
 
 class TelegramGrabber:
