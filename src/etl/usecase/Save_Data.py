@@ -2,13 +2,15 @@ from src.etl.domain.interfaces import IRepository
 from src.etl.adapter.tg_grabber import TelegramGrabber
 from src.etl.adapter.anonymizer import TelegramAnonymizer
 from src.etl.domain.value_objects import MessageMetadata
+from src.etl.adapter.yandex_parser import YandexParser
 
 class SaveDataUseCase:
 
-    def __init__(self, grabber: TelegramGrabber, repository: IRepository, anonymizer: TelegramAnonymizer):
+    def __init__(self, grabber: TelegramGrabber, repository: IRepository, anonymizer: TelegramAnonymizer, yandex_parser: YandexParser ):
         self.grabber = grabber
         self.repository = repository
         self.anonymizer = anonymizer
+        self.yandex_parser = yandex_parser
     
     async def execute(self, source_type: str, source: str):
 
@@ -17,7 +19,7 @@ class SaveDataUseCase:
         if source_type == "tg":
             messages = await self.grabber.grab_chat(source)
         elif source_type == "yd":
-            messages = await self._yandex_loader(source)
+            messages = self.yandex_parser.parse(source)
         else:
             raise ValueError("Unknown source type")
 
