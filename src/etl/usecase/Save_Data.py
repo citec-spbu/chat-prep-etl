@@ -10,11 +10,16 @@ class SaveDataUseCase:
         self.repository = repository
         self.anonymizer = anonymizer
     
-    async def execute(self, chat_ref: str):
+    async def execute(self, source_type: str, source: str):
 
-        # 1. Получаем сообщения (уже MessageMetadata). 
+        # 1. Получаем сообщения (уже MessageMetadata)/Яндекс Диск
         # В TelegramGrabber уже выполняется и парсинг и перевод в текста в сущность.
-        messages = await self.grabber.grab_chat(chat_ref)
+        if source_type == "tg":
+            messages = await self.grabber.grab_chat(source)
+        elif source_type == "yd":
+            messages = await self._yandex_loader(source)
+        else:
+            raise ValueError("Unknown source type")
 
         # 2. Обезличивание
         # Анонимизация выполняется с использованием TelegramAnonymizer:
