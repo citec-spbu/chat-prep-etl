@@ -25,6 +25,7 @@ class Answer:
     metadata: Optional[Dict[str,Any]] = None
 
 class MetricType(Enum):
+    ACCURACY = "accuracy"
     PRECISION = "precision"
     RECALL = "recall"
     HALLUCINATION_RATE = "hallucination_rate"
