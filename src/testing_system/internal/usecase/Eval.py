@@ -1,6 +1,6 @@
 from typing import List
 from testing_system.internal.domain.entities import MetricValue, Question, Answer, MetricType
-
+from testing_system.internal.usecase.Judge import Judge
 
 class Eval:
     """The measurer of the experiment"""
@@ -13,11 +13,14 @@ class Eval:
         testing_system/internal/domain/entities.py
         """
     
-    def __init__(self):
-        self.judge = None #TODO
+    def __init__(self, judge: Judge):
+        self._judge = judge
 
     def execute(self, q: Question, a: Answer) -> List[MetricValue]:
-        metrics = []
+
+        accuracy, a = self._judge.execute(q,a)
+
+        metrics = [accuracy]
 
         #latency(время ответа)
         metrics.append(
@@ -60,7 +63,4 @@ class Eval:
                 metadata=None
             )
         )
-
-
-
         return metrics
