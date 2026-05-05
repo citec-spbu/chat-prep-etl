@@ -17,6 +17,16 @@ class Judge:
         self._SYSTEM_PROMPT = ""
 
     def execute(self, q: Question, a: Answer) -> tuple[MetricValue, Answer]:
+        """
+        The function for evaluation by judge.
+        Args:
+            q (Question): The question for the assistant.
+            a (Answer): The answer of the Assistant to be evaluated.
+
+        Returns:
+            MetricValue: The accuracy of the answer (0 / 0.5 / 1),
+            Answer: The a with filled attribute retrieved_context
+        """
         a.retrieved_context = q.retrieved_context_id
         return (MetricValue(
             type="accuracy",
