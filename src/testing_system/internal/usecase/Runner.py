@@ -9,9 +9,10 @@ from testing_system.internal.domain.interfaces import \
     IAssistant, IRetriever, IRegistry
 from testing_system.internal.domain.value_objects import AssistantResponse, \
     AssistantRequest, RetrievalRequest, RetrievalResponse
-from testing_system.internal.usecase import Eval
+from testing_system.internal.usecase.Eval import Eval
 from testing_system.internal.usecase.ProcessQuery import Processor
 
+logger = logging.getLogger(__name__)
 
 class Runner:
     """Main testing pipeline"""
@@ -19,22 +20,15 @@ class Runner:
                  registry: IRegistry,
                  assistant: IAssistant, 
                  retriever: IRetriever,
-                 top_k: int,
                  num_process_workers: int = 1,
                  num_eval_workers: int = 1,
-                 use_threads: bool = True
                  ):
-        self.logger = logging.getLogger(__name__)
         self.registry = registry
-        self.assistant = assistant
-        self.retriever = retriever
-        self.processor = Processor(self.assistant, self.retriever)
+        self.processor = Processor(assistant, retriever)
         self.eval = Eval()
-        self.top_k = top_k
         #   for asyncio
         self.num_process_workers = num_process_workers
         self.num_eval_workers = num_eval_workers
-        self.use_threads = use_threads
 
         self.process_queue = asyncio.Queue()
         self.eval_queue = asyncio.Queue()
@@ -42,11 +36,15 @@ class Runner:
     def _exist(self, experiment: Experiment) -> Experiment:
         """Checks the existence of the configuration in Registry"""
         return self.registry.check(experiment=experiment)
+    
+    def _save(self, experiment: Experiment):
+        """Saves the experiment via registry"""
+        self.registry.push(experiment=experiment)
+        return
 
     def _run_process(self, q: Question) -> Answer:
         response = self.processor.execute(
             question = q.text, 
-            top_k = self.top_k, 
             system_prompt = q.metadata.get("system_prompt", None),
             temperature = q.metadata.get("temperature", None),
             metadata=None
@@ -72,7 +70,7 @@ class Runner:
                 self.experiment.add_answer(processed)
                 await self.eval_queue.put((query,processed))
             except Exception as e:
-                self.logger.error(f"Process failed for exp {query.id}: {e}")
+                logger.error(f"Processor: Process failed for exp {query.id}: {e}")
             finally:
                 self.process_queue.task_done()
     
@@ -82,12 +80,12 @@ class Runner:
             try:
                 loop = asyncio.get_running_loop()
                 evaluated = await loop.run_in_executor(executor, self._run_eval, q, a)
-                self.logger.info(f"Query {q.id} completed")
+                logger.info(f"Processor: Query {q.id} completed")
                 
                 for m in evaluated:
                     self.experiment.add_metric(m)
             except Exception as e:
-                self.logger.error(f"Eval failed for query {q.id}: {e}")
+                logger.error(f"Processor: Eval failed for query {q.id}: {e}")
             finally:
                 self.eval_queue.task_done()
 
@@ -96,7 +94,7 @@ class Runner:
         Main for Runner
         input: Experiment
         output: Experiment
-        For every Experiment checks the existence in registry(logger),
+        For every Experiment checks the existence in registry (TODO),
         runs only unseen configurations.
         Processing every single query, evaluates 
 
@@ -110,14 +108,8 @@ class Runner:
         
         experiment_from_registry = self._exist(experiment=experiment)
         if experiment_from_registry != None:
+            logger.info(f"Processor: found {experiment_from_registry.id} Experiment in registry")
             return experiment_from_registry
-        '''
-        TODO
-        Maybe there are some causes to save not Experiments,
-        but only Q-A without ids to retrieve metrics and answer for every 
-        seen question configuration? 
-        '''
-
         self.experiment = experiment
 
         #start_time
@@ -127,13 +119,8 @@ class Runner:
         for q in self.experiment.questions:
             await self.process_queue.put(q)
 
-        if self.use_threads:
-            executor_class = ThreadPoolExecutor
-        else:
-            executor_class = ProcessPoolExecutor
-
         max_workers = max(self.num_process_workers, self.num_eval_workers)
-        with executor_class(max_workers=max_workers) as executor:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
             process_tasks = [
                 asyncio.create_task(self._process_worker(executor))
                 for _ in range(self.num_process_workers)
@@ -152,4 +139,5 @@ class Runner:
 
         #end_time
         self.experiment.finished_at = datetime.now(timezone.utc)
+        self._save(experiment=experiment)
         return self.experiment
