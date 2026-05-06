@@ -48,10 +48,10 @@ class Experiment:
     id: str
     name: str
     config: Dict[str, Any]
-    question: List[Question]
-    answer: List[Answer]
+    questions: List[Question]
+    answers: List[Answer]
     metrics: List[MetricValue]
-    started_at: datetime
+    started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
 
     def add_answer(self, answer: Answer) -> None:

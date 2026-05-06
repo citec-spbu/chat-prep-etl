@@ -38,11 +38,20 @@ class IRegistry(ABC):
         None - doesn`t exist, provide it and save
         """
         pass
-    
+
     @abstractmethod
     def select(self, latest = None) -> List[Experiment]:
         """
         Export all the experiments from registry.
         latest: int for how many experiments to select, None for all
         """
+        pass
+
+
+class IExperimentLoader(ABC):
+    """Interface for loading experiment descriptions into domain entities."""
+
+    @abstractmethod
+    def load(self, path: str) -> Experiment:
+        """Loads an experiment from an external source."""
         pass

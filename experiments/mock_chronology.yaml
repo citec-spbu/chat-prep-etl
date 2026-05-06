@@ -1,0 +1,27 @@
+id: mock_chronology_v1
+name: "Mock chronology experiment"
+
+assistant:
+  adapter: mock
+  params:
+    model: mock
+    temperature: 0.2
+
+retriever:
+  adapter: mock
+  params:
+    top_k: 3
+
+prompt:
+  path: prompts/evolution/chronology/few_shot.yaml
+
+queries:
+  - id: q1
+    text: "Во сколько вылетает рейс SU-1231?"
+    expected_context_ids: ["1"]
+
+metrics:
+  - latency
+  - token_count
+  - precision
+  - recall
