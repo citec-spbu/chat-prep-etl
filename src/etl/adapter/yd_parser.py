@@ -3,21 +3,29 @@ import zipfile
 import requests
 import tempfile
 import shutil
-from typing import List, Any
+from typing import List, Any, Optional
 from bs4 import BeautifulSoup
 from src.etl.domain.interfaces import IParser
 from src.etl.domain.value_objects import MessageMetadata
+from src.etl.usecase.anonymiser import TelegramAnonymizer
 
 
 class HTMLParser(IParser):
-    def __init__(self, source_name: str = "telegram_html_export"):
+    def __init__(self, source_name: str = "telegram_html_export", anonymizer: Optional[TelegramAnonymizer] = None):
         self.source_name = source_name
+        self.anonymizer = anonymizer
 
     async def parse_message(self, element: Any) -> MessageMetadata:
             from_node = element.select_one('.from_name')
             sender_id = from_node.get_text(strip=True) if from_node else "Unknown"
             text_node = element.select_one('.text')
             text = text_node.get_text(separator="\n", strip=True) if text_node else ""
+
+            if self.anonymizer:
+                sender_id = sender_id = self.anonymizer._TelegramAnonymizer__get_label(sender_id, "PER")
+                text = self.anonymizer._TelegramAnonymizer__process_text(text)
+           
+           
             attached_files = []
             for a in element.select('.photo_wrap'):
                 if a.get("href"):
