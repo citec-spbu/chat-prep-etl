@@ -3,6 +3,7 @@ import zipfile
 import requests
 import tempfile
 import shutil
+from dataclasses import replace
 from typing import List, Any, Optional
 from bs4 import BeautifulSoup
 from src.etl.domain.interfaces import IParser
@@ -45,15 +46,24 @@ class HTMLParser(IParser):
                 soup = BeautifulSoup(html_content, 'lxml')
             except:
                 soup = BeautifulSoup(html_content, 'html.parser')
+            
             message_elements = soup.select('div.message.default')
             results = []
+            
             for el in message_elements:
                 if "service" in el.get("class", []):
                     continue    
                 metadata = await self.parse_message(el)
                 if metadata.text or metadata.attached_files:
                     results.append(metadata)
-            return results
+            if self.anonymizer:
+                final_results = []
+                for msg in results:
+                    new_text = self.anonymizer._TelegramAnonymizer__process_text_again(msg.text)
+                    new_msg = replace(msg, text=new_text)
+                    final_results.append(new_msg)
+            return final_results
+                    
 class HTMLGrabber:
     def __init__(self, parser: IParser):
         self.parser = parser
