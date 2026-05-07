@@ -90,11 +90,22 @@ class TelegramAnonymizer:
         if not isinstance(text, str) or not text:
             return text
 
+        WORD_CHAR = r'[а-яёА-ЯЁa-zA-Z0-9]'
+
         sorted_entities = sorted(self.entities.keys(), key=len, reverse=True)
 
         for entity in sorted_entities:
+            # Пропускаем слишком короткие сущности — скорее всего галлюцинация
+            if len(entity) < 3:
+                continue
+
             if entity in text.lower():
-                pattern = re.compile(re.escape(entity), re.IGNORECASE)
+                pattern = re.compile(
+                    r'(?<!' + WORD_CHAR + r')' +
+                    re.escape(entity) +
+                    r'(?!' + WORD_CHAR + r')',
+                    re.IGNORECASE
+                )
                 text = pattern.sub(self.entities[entity], text)
 
         return text
