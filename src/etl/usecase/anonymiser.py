@@ -19,7 +19,7 @@ except ImportError:
 
 from natasha import (
     Segmenter, MorphVocab, NewsEmbedding,
-    NewsNERTagger, Doc
+    NewsNERTagger, Doc, NewsMorphTagger
 )
 
 
@@ -28,6 +28,7 @@ class TelegramAnonymizer:
         self.segmenter = Segmenter()
         self.morph_vocab = MorphVocab()
         self.emb = NewsEmbedding()
+        self.morph_tagger = NewsMorphTagger(self.emb)
         self.ner_tagger = NewsNERTagger(self.emb)
 
         self.mapping = {}
@@ -76,10 +77,17 @@ class TelegramAnonymizer:
         # Затем Natasha (имена, города)
         doc = Doc(text)
         doc.segment(self.segmenter)
+        doc.tag_morph(self.morph_tagger)
         doc.tag_ner(self.ner_tagger)
+
+        SKIP_POS = {'PRON', 'CCONJ', 'SCONJ', 'ADP', 'PART', 'INTJ', 'ADV'}
 
         spans = sorted(doc.spans, key=lambda x: x.start, reverse=True)
         for span in spans:
+            span_tokens = [t for t in doc.tokens if
+                           t.start >= span.start and t.stop <= span.stop]
+            if all(t.pos in SKIP_POS for t in span_tokens):
+                continue
             span.normalize(self.morph_vocab)
             label = self.__get_label(span.normal or span.text, span.type)
             text = text[:span.start] + label + text[span.stop:]
@@ -90,11 +98,22 @@ class TelegramAnonymizer:
         if not isinstance(text, str) or not text:
             return text
 
+        WORD_CHAR = r'[а-яёА-ЯЁa-zA-Z0-9]'
+
         sorted_entities = sorted(self.entities.keys(), key=len, reverse=True)
 
         for entity in sorted_entities:
+            # Пропускаем слишком короткие сущности — скорее всего галлюцинация
+            if len(entity) < 3:
+                continue
+
             if entity in text.lower():
-                pattern = re.compile(re.escape(entity), re.IGNORECASE)
+                pattern = re.compile(
+                    r'(?<!' + WORD_CHAR + r')' +
+                    re.escape(entity) +
+                    r'(?!' + WORD_CHAR + r')',
+                    re.IGNORECASE
+                )
                 text = pattern.sub(self.entities[entity], text)
 
         return text

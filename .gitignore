@@ -2,7 +2,9 @@
 __pycache__/
 *.py[codz]
 *$py.class
-
+*.pyc
+*.pyo
+*.pyd
 # C extensions
 *.so
 
@@ -215,3 +217,5 @@ qdrant_storage/
 Ediks_session.session
 media/
 zipdata/
+
+*.json
