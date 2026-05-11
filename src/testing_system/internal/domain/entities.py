@@ -25,12 +25,20 @@ class Answer:
     metadata: Optional[Dict[str,Any]] = None
 
 class MetricType(Enum):
-    ACCURACY = "accuracy"
-    PRECISION = "precision"
-    RECALL = "recall"
+    #PRECISION = "precision"
+    #RECALL = "recall"
+    #REUSABILITY = "reusability"
+    EXACT_MATCH = "exact_match"
+
+    TOKEN_PRECISION = "token_precision"
+    TOKEN_RECALL = "token_recall"
+    TOKEN_F1 = "token_f1"
+
+    ROUGE_L_F1 = "rouge_l_F1"
+
     HALLUCINATION_RATE = "hallucination_rate"
+    
     TOKEN_COUNT = "token_count"
-    REUSABILITY = "reusability"
     LATENCY = "latency"
 
 @dataclass
