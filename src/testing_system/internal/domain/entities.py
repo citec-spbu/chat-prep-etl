@@ -3,15 +3,16 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, List, Any, Dict
 
+from testing_system.internal.domain.value_objects import RetrievedDocument
+
 @dataclass
 class Question:
     """
     The question for the assistant
-    TODO there should be system prompt, i think
     """
     id: str
     text: str
-    retrieved_context_id: Optional[List[str]] = None # for RECALL
+    ground_true: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
 @dataclass
@@ -19,7 +20,7 @@ class Answer:
     """The assistant`s answer (text and details)"""
     id: str
     text: str
-    retrieved_context: List[str] # ID of the documents used
+    retrieved_context: List[RetrievedDocument]
     token_count: int 
     latency_ms: float 
     metadata: Optional[Dict[str,Any]] = None
@@ -35,6 +36,8 @@ class MetricType(Enum):
     TOKEN_F1 = "token_f1"
 
     ROUGE_L_F1 = "rouge_l_F1"
+
+    BERT_SCORE = "bert_score"
 
     HALLUCINATION_RATE = "hallucination_rate"
     
