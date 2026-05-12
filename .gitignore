@@ -213,7 +213,7 @@ __marimo__/
 #Main
 /data
 qdrant_storage/
-
+experiment_results/
 Ediks_session.session
 media/
 zipdata/

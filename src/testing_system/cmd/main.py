@@ -1,8 +1,37 @@
-from testing_system.cmd.test_mock_pipeline import mock_test
-from testing_system.cmd.test_ollama_pipeline import ollama_test
+import asyncio
+import sys
+import logging
+import logging.config
+import yaml
+from testing_system.internal.controller.Orchestrator import Orchestrator
 
-mock_test()
-print("\n")
-ollama_test()
+async def main():
+    try:
+        config_path = sys.argv[1] #Usage: python -m testing_system.cmd.main <config.yaml>
+    except IndexError:
+        config_path = "testing_system/config/config.yaml"
+    try:
+        with open(config_path, 'r') as f:
+            cfg = yaml.safe_load(f)
+    except FileNotFoundError:
+        logger.error(f"Config file not found: {config_path}")
+        sys.exit(1)
+    except yaml.YAMLError as e:
+        logger.error(f"Failed to parse config file: {e}")
+        sys.exit(1)
 
-# logger is used in Runner, be careful - init the logger not to get error
+    logging.config.dictConfig(cfg.get("logging", {}))
+    logger = logging.getLogger(__name__)
+    logger.info("Starting Testing System")
+    orchestrator = Orchestrator(cfg["testing_system"]) #TODO
+    await orchestrator.execute_experiments(cfg["testing_system"]["loaders"]["path"])
+    '''
+    server_port = cfg.get("testing_system", {}).get("port", 2222)
+    logger.info("HTTP server listening on port %d", server_port)
+    web.run_app(app, port=server_port)
+    '''
+    logger.debug("Done")
+    logger.debug(f"Registry state: {orchestrator.runner.registry.select(None)}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
