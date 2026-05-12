@@ -26,19 +26,16 @@ class Answer:
     metadata: Optional[Dict[str,Any]] = None
 
 class MetricType(Enum):
-    #PRECISION = "precision"
-    #RECALL = "recall"
-    #REUSABILITY = "reusability"
     EXACT_MATCH = "exact_match"
-
     TOKEN_PRECISION = "token_precision"
     TOKEN_RECALL = "token_recall"
     TOKEN_F1 = "token_f1"
+    NUMERIC_ACCURACY = "numeric_accuracy"
+    OVERLAP = "overlap"
 
     ROUGE_L_F1 = "rouge_l_F1"
 
     BERT_SCORE = "bert_score"
-
     HALLUCINATION_RATE = "hallucination_rate"
     
     TOKEN_COUNT = "token_count"
@@ -62,15 +59,10 @@ class Experiment:
     questions: List[Question]
     ground_truth: Dict[str, Any]
     answers: List[Answer]
-    metrics: List[MetricValue]
+    metrics: Dict[str, MetricValue]
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
 
-    def add_answer(self, answer: Answer) -> None:
+    def add(self, answer: Answer, metrics: List[MetricValue]) -> None:
         self.answers.append(answer)
-    
-    def add_metric(self, metric: MetricValue) -> None:
-        self.metrics.append(metric)
-
-    def is_complete(self) -> bool:
-        return len(self.answers) == len(self.questions) and len(self.metrics) == len(self.questions)
+        self.metrics[answer.id] = metrics
