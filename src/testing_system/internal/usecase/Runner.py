@@ -139,5 +139,5 @@ class Runner:
 
         #end_time
         self.experiment.finished_at = datetime.now(timezone.utc)
-        self._save(experiment=experiment)
+        self._save(experiment=self.experiment)
         return self.experiment

@@ -74,7 +74,7 @@ class Orchestrator:
     def _choose_registry(self, cfg: dict) -> IRegistry:
         if cfg["type"] == "postgres":
             raise NotImplementedError
-        if cfg["type"] == "local":
+        elif cfg["type"] == "local":
             return LocalRegistry(cfg["local"]["path"])
         else:
             return MockRegistry()

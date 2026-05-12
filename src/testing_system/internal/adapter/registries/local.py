@@ -19,8 +19,8 @@ class LocalRegistry(IRegistry):
         self._load()
 
     def push(self, experiment: Experiment) -> None:
-        self._experiments[experiment.id] = experiment
         self._save_one(experiment)
+        self._experiments[experiment.id] = experiment
         logger.info("Experiment %s saved to local registry", experiment.id)
 
     def check(self, experiment: Experiment) -> Optional[Experiment]:
@@ -51,10 +51,11 @@ class LocalRegistry(IRegistry):
 
     def _save_one(self, experiment: Experiment) -> None:
         self._output_dir.mkdir(parents=True, exist_ok=True)
+        if "/" in experiment.id or "\\" in experiment.id or ".." in experiment.id:
+            raise ValueError(f"Invalid experiment id: {experiment.id}")
         target = self._output_dir / f"{experiment.id}.json"
         tmp = target.with_suffix(".tmp")
         try:
-            
             tmp.write_text(
                 json.dumps(asdict(experiment), indent=2, ensure_ascii=False, default=str),
                 encoding="utf-8",
