@@ -82,6 +82,10 @@ class Eval:
                 case "rouge_l_f1":
                     self.metric_evaluators.append(self._rouge_l_f1)
                 case "hallucination_rate":
+                    if not self.encoder:
+                        self.encoder = SentenceTransformer(
+                            model
+                        )
                     self.metric_evaluators.append(self._hallucination_rate)
                     try:
                         from deepeval.models.hallucination_model import (
