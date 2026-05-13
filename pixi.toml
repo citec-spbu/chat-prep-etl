@@ -49,6 +49,6 @@ fastembed = "*"
 # --- 5. СБОРКА ОКРУЖЕНИЙ (Environments) ---
 [environments]
 # Каждое окружение берет базу из [dependencies] + свою фичу
-etl_env = ["etl"]
-front_env = ["front"]
-llm_env = ["llm"]
+etl-env = ["etl"]
+front-env = ["front"]
+llm-env = ["llm"]
