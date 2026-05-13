@@ -6,15 +6,12 @@ from src.etl.domain.value_objects import MessageMetadata
 def remove_emoji(text):
     return emoji.replace_emoji(text, replace='')
 
-    
-# ----------------------------
-# Очистка текста
-# ----------------------------
+
 def clean_text(text):
     if not text:
         return ""
-    #Удаления ненужных скобок после сообщений
-    text = re.sub(r'\s?[()]{1,}\s?', ' ', text)
+    # удалить эмоциональные скобки в конце сообщения
+    text = re.sub(r'[()]{2,}$', '', text).strip()
 
     # удалить эмодзи
     text = remove_emoji(text)
@@ -36,18 +33,48 @@ def clean_text(text):
 
     return text
 
+def build_attachment_text(attached_files):
+    markers = []
+
+    for file in attached_files:
+        file_lower = file.lower()
+
+        if "stikers" in file_lower:
+            markers.append("[STIKERS]")
+
+        elif file_lower.endswith((".jpg", ".jpeg", ".png", ".webp")):
+            markers.append("[IMAGE]")
+
+        elif file_lower.endswith((
+            ".mp4", ".avi", ".mov"
+        )):
+            markers.append("[VIDEO]")
+
+        elif file_lower.endswith((
+            ".ogg", ".mp3", ".wav"
+        )):
+            markers.append("[VOICE]")
+
+        else:
+            markers.append("[FILE]")
+
+    return " ".join(markers)
 
 
-# ----------------------------
-# Обработка одного сообщения
-# ----------------------------
 def process_message(msg: MessageMetadata):
     #извлекаем текст из поля
     text = msg.text or ""
 
-    #чистим текст
+    #очистка текста
     text = clean_text(text)
     
+    #маркеры вложений
+    attachment_text = build_attachment_text(msg.attached_files)
+
+    # объединение
+    if attachment_text:
+        text = f"{text} {attachment_text}".strip()
+
     #проверка не остался после чистки текст пустой
     if not text.strip() and not msg.attached_files:
         return None
@@ -60,9 +87,7 @@ def process_message(msg: MessageMetadata):
         attached_files = msg.attached_files
     )
 
-# ----------------------------
-# Обработка всего списка
-# ----------------------------
+
 def clear_data(messages):
     cleaned = []
 

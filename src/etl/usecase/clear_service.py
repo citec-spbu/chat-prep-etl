@@ -6,16 +6,18 @@ from src.etl.domain.value_objects import MessageMetadata
 def remove_emoji(text):
     return emoji.replace_emoji(text, replace='')
 
-    
-# ----------------------------
-# Очистка текста
-# ----------------------------
+
 def clean_text(text):
     if not text:
         return ""
+    # удалить эмоциональные скобки в конце сообщения
+    text = re.sub(r'[()]{2,}$', '', text).strip()
 
     # удалить эмодзи
     text = remove_emoji(text)
+
+    #Убирает лишние пробелы перед знаками препинания
+    text = re.sub(r'\s+([?!.,])', r'\1', text)
 
     # нижний регистр
     text = text.lower()
@@ -31,39 +33,50 @@ def clean_text(text):
 
     return text
 
+def build_attachment_text(attached_files):
+    markers = []
 
-# ----------------------------
-# Замена сущностей
-# ----------------------------
-def replace_entities(text):
-    if not text:
-        return ""
+    for file in attached_files:
+        file_lower = file.lower()
 
-    # ссылки
-    text = re.sub(r'http\S+', '[LINK]', text)
+        if "stikers" in file_lower:
+            markers.append("[STIKERS]")
 
-    # email
-    text = re.sub(r'\S+@\S+', '[EMAIL]', text)
+        elif file_lower.endswith((".jpg", ".jpeg", ".png", ".webp")):
+            markers.append("[IMAGE]")
 
-    # файлы (примерно)
-    text = re.sub(r'\S+\.(pdf|docx|zip|png|jpg)', '[FILE]', text)
+        elif file_lower.endswith((
+            ".mp4", ".avi", ".mov"
+        )):
+            markers.append("[VIDEO]")
 
-    return text
+        elif file_lower.endswith((
+            ".ogg", ".mp3", ".wav"
+        )):
+            markers.append("[VOICE]")
+
+        else:
+            markers.append("[FILE]")
+
+    return " ".join(markers)
 
 
-# ----------------------------
-# Обработка одного сообщения
-# ----------------------------
 def process_message(msg: MessageMetadata):
     #извлекаем текст из поля
     text = msg.text or ""
 
-    #чистим текст
-    text = replace_entities(text)
+    #очистка текста
     text = clean_text(text)
     
+    #маркеры вложений
+    attachment_text = build_attachment_text(msg.attached_files)
+
+    # объединение
+    if attachment_text:
+        text = f"{text} {attachment_text}".strip()
+
     #проверка не остался после чистки текст пустой
-    if not text.strip():
+    if not text.strip() and not msg.attached_files:
         return None
 
     #наш результат
@@ -74,9 +87,7 @@ def process_message(msg: MessageMetadata):
         attached_files = msg.attached_files
     )
 
-# ----------------------------
-# Обработка всего списка
-# ----------------------------
+
 def clear_data(messages):
     cleaned = []
 

@@ -41,11 +41,11 @@ import os
 if __name__ == "__main__":
         base_path = r"C:\Users\Alina\Desktop\chat-prep-etl\test_servise"
         files = os.listdir(base_path)
-        target = "messages_dump.json"
+        target = "messages3_dump.json"
         if target in files:
             print(f"\nФайл '{target}' найден. Запускаю очистку...")
             run_clean_pipeline(os.path.join(base_path, target), 
-                                 os.path.join(base_path, "cleaned_results(mes).json"))
+                                 os.path.join(base_path, "cleaned_results(mes_3).json"))
         else:
             print(f"\nФайла '{target}' нет в списке выше.")
 
