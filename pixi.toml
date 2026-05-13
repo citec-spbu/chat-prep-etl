@@ -1,25 +1,19 @@
-[project]
+[workspace]
 name = "chat-prep-etl"
 version = "0.1.0"
 channels = ["conda-forge"]
 platforms = ["win-64", "linux-64", "osx-arm64"]
 
-[tasks]
-# Запуск конкретных сред
-test-etl = "pixi run -e etl_env python test.py"
-run-front = "pixi run -e front_env uvicorn src.front.main:app --reload"
-run-llm = "pixi run -e llm_env uvicorn src.llm.main:app --reload"
-
-# --- 1. ОБЩАЯ БАЗА (есть во всех контейнерах) ---
+# --- 1. General ---
 [dependencies]
-python = "3.11.*"
 python-dotenv = "*"
 pyyaml = "*"
 requests = "*"
 pandas = "*"
 
-# --- 2. ФИЧА: ETL (Парсинг и очистка) ---
+# --- 2. ETL ---
 [feature.etl.dependencies]
+python = "3.11.*"
 bs4 = "*"
 lxml = "*"
 emoji = "*"
@@ -28,27 +22,28 @@ pymorphy2 = "*"
 [feature.etl.pypi-dependencies]
 natasha = ">=1.6.0, <2"
 pymorphy2-dicts-ru = "*"
-setuptools = "==69.5.1" # Оставляем старую для работы pkg_resources
 telethon = "*"
+setuptools = "==69.5.1" 
 
-# --- 3. ФИЧА: FRONT (Интерфейс) ---
+# --- 3.  FRONT  ---
 [feature.front.dependencies]
+python = "3.12.*"
 fastapi = "*"
 uvicorn = "*"
 
 [feature.front.pypi-dependencies]
 python-multipart = "*"
 
-# --- 4. ФИЧА: LLM (Ассистент и векторная база) ---
+# --- 4. LLM ---
 [feature.llm.dependencies]
+python = "3.12.*"
 fastapi = "*"
 uvicorn = "*"
 qdrant-client = "*"
 fastembed = "*"
 
-# --- 5. СБОРКА ОКРУЖЕНИЙ (Environments) ---
+# ------
 [environments]
-# Каждое окружение берет базу из [dependencies] + свою фичу
 etl-env = ["etl"]
 front-env = ["front"]
 llm-env = ["llm"]
