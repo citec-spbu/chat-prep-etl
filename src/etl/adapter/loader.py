@@ -1,13 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
-
+from src.etl.domain.interfaces import IDataLoader
 from src.etl.domain.value_objects import MessageMetadata
-
-class IDataLoader(ABC):
-
-    @abstractmethod
-    async def load(self, source: str) -> List[MessageMetadata]:
-        pass
 
 class TelegramLoader(IDataLoader):
 
