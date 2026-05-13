@@ -79,6 +79,10 @@ class OpenAIAssistant(IAssistant):
                 latency_ms = (time.time() - start_time) * 1000,
                 used_prompt=messages[:2],
                 retrieved_context=r.retrieved_context,
+<<<<<<< HEAD
                 error = str(e),
+=======
+                error = e,
+>>>>>>> 4c018bc (feat: experiment stage 2 (hallucination rate is implemented, jaccard distance instead of the exact match, numeric is updated), changes in domain logic to evaluate metrics on documents, docstrings for metrics)
                 metadata=None
             )
