@@ -20,13 +20,6 @@ async def test_parser():
 
     for m in messages:
         print(f"Отправитель: {m.sender_id} | Текст: {m.text}")
-    
-    data_to_save = [vars(m) for m in messages]
-
-    with open("messages_dump_.json", "w", encoding="utf-8") as f:
-        json.dump(data_to_save, f, ensure_ascii=False, indent=4)
-
-    print(f"Сохранено {len(data_to_save)} сообщений.")
 
 if __name__ == "__main__":
     asyncio.run(test_parser())
