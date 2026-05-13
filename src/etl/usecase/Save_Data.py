@@ -5,7 +5,7 @@ class SaveDataUseCase:
         self.loader = loader
         self.repository = repository
 
-    async def execute(self, sourse: str):
-        messages = await self.loader.load(sourse)
+    async def execute(self, source: str):
+        messages = await self.loader.load(source)
 
         await self.repository.save_batch(messages)
