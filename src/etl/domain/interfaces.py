@@ -66,3 +66,10 @@ class IParser(ABC):
         Пакетный парсинг списка событий (например, при докачке истории).
         """
         pass
+
+
+class IDataLoader(ABC):
+
+    @abstractmethod
+    async def load(self, source: str) -> List[MessageMetadata]:
+        pass
