@@ -82,10 +82,19 @@ class Eval:
                 case "rouge_l_f1":
                     self.metric_evaluators.append(self._rouge_l_f1)
                 case "hallucination_rate":
-                    if not self.encoder:
-                        self.encoder = SentenceTransformer(
-                            model
+                    try:
+                        from deepeval.models.hallucination_model import (
+                            HallucinationModel,
                         )
+                        logger.debug("Loading h model")
+                        from transformers import AutoModel, AutoTokenizer
+                        AutoTokenizer.from_pretrained(self.hallucination_model, trust_remote_code=True)
+                        AutoModel.from_pretrained(self.hallucination_model, trust_remote_code=True)
+                    except ImportError as e:
+                        logger.error(
+                            f"Vectera Hallucination detection model can not be loaded.\n{e}"
+                        )
+                    self.hallucination_scorer = HallucinationModel(model_name=self.hallucination_model)
                     self.metric_evaluators.append(self._hallucination_rate)
                     try:
                         from deepeval.models.hallucination_model import (
