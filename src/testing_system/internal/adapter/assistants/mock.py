@@ -20,6 +20,7 @@ class MockAssistant(IAssistant):
             token_count=ceil(len(response)/3),
             latency_ms=0,
             used_prompt=r.question,
+            retrieved_context=r.retrieved_context,
             error=None,
             metadata=None
         )

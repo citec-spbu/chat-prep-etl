@@ -52,7 +52,7 @@ class Runner:
         return Answer(
             id = q.id,
             text = response.answer,
-            retrieved_context=q.retrieved_context_id,
+            retrieved_context=response.retrieved_context,
             token_count=response.token_count,
             latency_ms=response.latency_ms,
             metadata=None
