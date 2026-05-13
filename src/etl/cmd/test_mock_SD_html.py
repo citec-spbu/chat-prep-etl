@@ -13,6 +13,8 @@ class FakeRepository(IRepository):
 
         for msg in messages[:5]:
             print(msg)
+        async def search_similar(self, *args, **kwargs):
+            return []
 
     async def search_similar(self, *args, **kwargs):
 
