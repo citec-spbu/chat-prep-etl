@@ -67,6 +67,7 @@ class OpenAIAssistant(IAssistant):
                 token_count=total_tokens,
                 latency_ms = (time.time() - start_time) * 1000,
                 used_prompt=messages[:2],
+                retrieved_context=r.retrieved_context,
                 error = None,
                 metadata=None
             )
@@ -76,6 +77,7 @@ class OpenAIAssistant(IAssistant):
                 token_count=0,
                 latency_ms = (time.time() - start_time) * 1000,
                 used_prompt=messages[:2],
+                retrieved_context=r.retrieved_context,
                 error = e,
                 metadata=None
             )

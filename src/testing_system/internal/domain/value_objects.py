@@ -27,6 +27,7 @@ class AssistantResponse:
     token_count: int
     latency_ms: float
     used_prompt: str
+    retrieved_context: Optional[List[RetrievedDocument]]
     error: Optional[str]
     metadata: Optional[Dict[str, Any]]
 
