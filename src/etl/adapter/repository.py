@@ -6,8 +6,8 @@ from qdrant_client.http import models
 from dataclasses import asdict
 from fastembed import TextEmbedding
 
-from src.etl.internal.domain.interfaces import IRepository
-from src.etl.internal.domain.value_objects import MessageMetadata
+from src.etl.domain.interfaces import IRepository
+from src.etl.domain.value_objects import MessageMetadata
 
 
 class QdrantFastEmbedRepository(IRepository):
