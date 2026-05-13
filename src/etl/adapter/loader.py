@@ -3,9 +3,6 @@ from typing import List
 
 from src.etl.domain.value_objects import MessageMetadata
 
-from src.etl.adapter.tg_grabber import TelegramGrabber
-from src.etl.adapter.yd_parser import YandexParser, HTMLGrabber
-
 class IDataLoader(ABC):
 
     @abstractmethod
@@ -23,10 +20,12 @@ class TelegramLoader(IDataLoader):
 
 class YandexLoader(IDataLoader):
 
-    def __init__(self, parser: YandexParser):
+    def __init__(self, parser: YandexParser, limit: int | None = None):
         self.parser = parser
+        self.limit = limit
 
     async def load(self, source: str) -> List[MessageMetadata]:
+        messages = await self.parser.parse(source)
 
         return await self.parser.parse(source)
     
