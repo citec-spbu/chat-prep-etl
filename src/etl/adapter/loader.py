@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from typing import List
 from src.etl.domain.interfaces import IDataLoader
 from src.etl.domain.value_objects import MessageMetadata
@@ -16,12 +15,10 @@ class TelegramLoader(IDataLoader):
 
 class YandexLoader(IDataLoader):
 
-    def __init__(self, parser: YandexParser, limit: int | None = None):
+    def __init__(self, parser: YandexParser):
         self.parser = parser
 
     async def load(self, source: str) -> List[MessageMetadata]:
-
-        messages = await self.parser.parse(source)
 
         return await self.parser.parse(source)
     
