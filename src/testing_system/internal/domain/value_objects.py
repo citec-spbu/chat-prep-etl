@@ -34,7 +34,6 @@ class AssistantResponse:
 class RetrievalRequest:
     """The request for k nearest documents"""
     query: str
-    k: int
 
 @dataclass
 class RetrievalResponse:

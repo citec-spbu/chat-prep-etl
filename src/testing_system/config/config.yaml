@@ -1,0 +1,47 @@
+testing_system:
+  port: 8501
+  num_process_workers: 1
+  num_eval_workers: 1
+
+  assistants:
+    type: mock          # или cloud
+    ollama:
+      host: "ollama"
+      port: 11434
+      model: "qwen:4b"    # only one model per ollama is available
+    cloud:
+      base_url: "https://ai.api.cloud.yandex.net/v1"
+      model: "gpt://b1gt8b2ef4mq1ufc4dil/gpt-oss-20b/latest"
+      temperature: 0.3
+
+  retrievers:
+    type: mock
+    etl_service:
+      port: 1111
+
+  registries:
+    type: local
+    local:
+      path: "/workspace/chat-prep-etl/experiment_results"
+    postgres:
+      connection_string: "postgresql://..."
+
+  loaders:
+    type: yaml
+    path: "/workspace/chat-prep-etl/experiments"
+
+logging:
+  version: 1
+  disable_existing_loggers: false
+  formatters:
+    default:
+      format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  handlers:
+    console:
+      class: logging.StreamHandler
+      level: DEBUG
+      formatter: default
+      stream: ext://sys.stderr                # явно указываем stderr
+  root:
+    level: DEBUG
+    handlers: [console]

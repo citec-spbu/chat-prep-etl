@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Any
 
-from src.etl.internal.domain.value_objects import MessageMetadata
+from src.etl.domain.value_objects import MessageMetadata
 
 
 class IRepository(ABC):
