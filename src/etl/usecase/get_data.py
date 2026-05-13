@@ -5,7 +5,7 @@ from src.etl.domain.value_objects import MessageMetadata
 from src.etl.usecase.clear_service import process_message
 
 
-class MessageMetadataUseCase:
+class GetMessageUseCase:
     def __init__(self, repository: IRepository):
         self._repository = repository
 
