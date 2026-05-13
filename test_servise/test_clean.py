@@ -1,6 +1,6 @@
 import json
 from dataclasses import asdict
-from test_servise.clean_service_test import clear_data
+from src.etl.usecase.clear_service import clear_data
 from src.etl.domain.value_objects import MessageMetadata
 
 def run_clean_pipeline(input_path, output_path):

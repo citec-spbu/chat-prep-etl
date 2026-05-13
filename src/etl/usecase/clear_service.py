@@ -36,7 +36,7 @@ def clean_text(text):
 def build_attachment_text(attached_files):
     markers = []
 
-    for file in attached_files:
+    for file in (attached_files or []):
         file_lower = file.lower()
 
         if "stikers" in file_lower:
@@ -69,7 +69,8 @@ def process_message(msg: MessageMetadata):
     text = clean_text(text)
     
     #маркеры вложений
-    attachment_text = build_attachment_text(msg.attached_files)
+    attached_files = msg.attached_files or []
+    attachment_text = build_attachment_text(attached_files)
 
     # объединение
     if attachment_text:
@@ -84,7 +85,7 @@ def process_message(msg: MessageMetadata):
         chat_id = msg.chat_id,
         sender_id = msg.sender_id,
         text = text,
-        attached_files = msg.attached_files
+        attached_files = attached_files
     )
 
 
