@@ -3,6 +3,7 @@ from src.etl.adapter.yd_parser import HTMLParser
 from src.etl.usecase.anonymiser import TelegramAnonymizer
 import os
 import json
+import setuptools
 
 async def test_parser():
     # Твой HTML контент (вставь сюда фрагмент или читай из файла)
