@@ -49,19 +49,22 @@ class HTMLParser(IParser):
             
             message_elements = soup.select('div.message.default')
             results = []
-            
             for el in message_elements:
                 if "service" in el.get("class", []):
                     continue    
                 metadata = await self.parse_message(el)
                 if metadata.text or metadata.attached_files:
                     results.append(metadata)
+            final_results = []
+
             if self.anonymizer:
-                final_results = []
                 for msg in results:
-                    new_text = self.anonymizer._TelegramAnonymizer__process_text_again(msg.text)
+                    new_text = self.anonymizer._TelegramAnonymizer__process_text(msg.text)
                     new_msg = replace(msg, text=new_text)
                     final_results.append(new_msg)
+            else:
+                final_results = results
+
             return final_results
                     
 class HTMLGrabber:
