@@ -64,7 +64,12 @@ class QdrantFastEmbedRepository(IRepository):
                 models.PointStruct(
                     id=str(uuid.uuid4()),
                     vector=vector.tolist(),
-                    payload=asdict(msg)
+                    payload={
+                        "chat_id": str(msg.chat_id),
+                        "sender_id": str(msg.sender_id),
+                        "text": str(msg.text) ,
+                        "attached_files": msg.attached_files
+             }
                 )
                 for vector, msg in zip(embeddings, messages)
             ]
@@ -107,7 +112,7 @@ class QdrantFastEmbedRepository(IRepository):
                     must=[
                         models.FieldCondition(
                             key="chat_id",
-                            match=models.MatchValue(value=chat_id)
+                            match=models.MatchValue(value=str(chat_id))
                         )
                     ]
                 ),

@@ -42,6 +42,7 @@ async def get_active_tg_client():
 class IngestRequest(BaseModel):
     source_type: str  # "telegram", "yandex", "html"
     source_path: str  # Название чата, ссылка на Я.Диск или путь к файлу
+    chat_id: Optional[int] = 0  # Для телеграма, если нужно указать явно
     limit: Optional[int] = 100
 
 @app.post("/ingest")
@@ -55,10 +56,10 @@ async def ingest_messages(request: IngestRequest, background_tasks: BackgroundTa
             loader = TelegramLoader(grabber)
         
         elif request.source_type == "yandex":
-            loader = YandexLoader(YandexParser(HTMLParser(anonymizer)))
+            loader = YandexLoader(YandexParser(HTMLParser(source_name=str(request.chat_id), anonymizer=anonymizer)))
             
         elif request.source_type == "html":
-            loader = HTMLLoader(HTMLGrabber(HTMLParser(anonymizer)))
+            loader = HTMLLoader(HTMLGrabber(HTMLParser(source_name=str(request.chat_id), anonymizer=anonymizer)))
             
         else:
             raise HTTPException(status_code=400, detail="Unknown source type")
@@ -79,7 +80,7 @@ async def ingest_messages(request: IngestRequest, background_tasks: BackgroundTa
 
 
 @app.get("/search")
-async def search(query: str, chat_id: int, k: int = 1, clean: bool = False):
+async def search(query: str, chat_id: int, k: int = 1, clean: str = "raw"):
     """
     Семантический поиск по сообщениям.
     :param query: Твой поисковый запрос (то, что мы тестировали)
@@ -88,11 +89,14 @@ async def search(query: str, chat_id: int, k: int = 1, clean: bool = False):
     :param clean: Нужно ли прогнать через очистку (clear_service)
     """
     try:
-        if clean:
-            # Используем твой метод get_clean из UseCase
+        if clean == "clean":
+
             results = await get_message_use_case.get_clean(query, chat_id, k)
-        else:
-            # Обычный сырой поиск
+        elif clean == "raw+clean":
+
+            results = await get_message_use_case.get_raw_clear(query, chat_id, k)
+        elif clean == "raw":
+
             results = await get_message_use_case.get_raw(query, chat_id, k)
             
         if not results:
