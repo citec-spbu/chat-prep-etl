@@ -31,6 +31,19 @@ class QdrantFastEmbedRepository(IRepository):
         self._collection_name = collection_name
         self._model = TextEmbedding(
             model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+        
+
+    async def _ensure_collection(self):
+        """Проверяет существование коллекции и создает её, если нужно"""
+        exists = await self._client.collection_exists(self._collection_name)
+        if not exists:
+            await self._client.create_collection(
+                collection_name=self._collection_name,
+                vectors_config=models.VectorParams(
+                    size=384,
+                    distance=models.Distance.COSINE
+                    )
+              )
 
     async def save_batch(self, messages: List[MessageMetadata]) -> None:
         """
@@ -43,6 +56,7 @@ class QdrantFastEmbedRepository(IRepository):
             Exception: В случае ошибки при векторизации или сетевом запросе к Qdrant.
         """
         try:
+            await self._ensure_collection()
             texts = [m.text if m.text else "" for m in messages]
             embeddings = await asyncio.to_thread(lambda: list(self._model.embed(texts)))
 
@@ -62,6 +76,8 @@ class QdrantFastEmbedRepository(IRepository):
             )
         except Exception as e:
             raise
+
+
 
     async def search_similar(self, query_text: str, chat_id: int, k: int) -> List[
         MessageMetadata]:
