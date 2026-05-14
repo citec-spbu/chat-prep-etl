@@ -23,7 +23,8 @@ async def main():
     logging.config.dictConfig(cfg.get("logging", {}))
     logger = logging.getLogger(__name__)
     logger.info("Starting Testing System")
-    orchestrator = Orchestrator(cfg["testing_system"]) #TODO
+    logger.info(f"Evaluation is provided by {cfg["testing_system"]["eval"]}")
+    orchestrator = Orchestrator(cfg["testing_system"])
     await orchestrator.execute_experiments(cfg["testing_system"]["loaders"]["path"])
     '''
     server_port = cfg.get("testing_system", {}).get("port", 2222)

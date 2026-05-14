@@ -7,6 +7,7 @@ from testing_system.internal.adapter.registries.local import LocalRegistry
 from testing_system.internal.adapter.registries.mock import MockRegistry
 from testing_system.internal.adapter.retrievers.mock import MockRetriever
 from testing_system.internal.domain.interfaces import IAssistant, IExperimentLoader, IRegistry, IRetriever
+from testing_system.internal.usecase.Eval import Eval
 from testing_system.internal.usecase.Runner import Runner
 from testing_system.internal.usecase.Loader import Loader 
 
@@ -24,17 +25,17 @@ class Orchestrator:
         retriever = self._choose_retriever(cfg["retrievers"])
         registry = self._choose_registry(cfg["registries"])
         loader = self._choose_loader(cfg["loaders"])
-        logger.info("Orchestrator: Adapters are initialized successfully")
-        logger.info(
-            f"""Orchestrator: init Assistant: {type(assistant)}\n"""+
-            f"""Orchestrator: init Retriever: {type(retriever)}\n"""+
-            f"""Orchestrator: init Registry: {type(registry)}\n"""+
-            f"""Orchestrator: init Loader: {type(loader)}\n"""
-            )
+        logger.info("Orchestrator: Adapters are initialized successfully"+
+            f"""\n"Orchestrator: init Assistant: {type(assistant)}"""+
+            f"""\n"Orchestrator: init Retriever: {type(retriever)}"""+
+            f"""\n"Orchestrator: init Registry: {type(registry)}"""+
+            f"""\n"Orchestrator: init Loader: {type(loader)}"""
+        )
         self.runner = Runner(
             registry=registry,
             assistant=assistant,
             retriever=retriever,
+            eval=Eval(**cfg["eval"]),
             num_process_workers=cfg["num_process_workers"],
             num_eval_workers=cfg["num_eval_workers"]
         )

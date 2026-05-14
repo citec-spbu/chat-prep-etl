@@ -33,16 +33,16 @@ class Eval:
     
     def __init__(self, 
                  metrics: List[str], 
-                 model: str = "bert-base-multilingual-cased",
+                 bert_model: str = "bert-base-multilingual-cased",
                  hallucination_model: str = None,
                  ):
         self.metric_evaluators = []
         self.device = "cpu"
-        self.model_path = model
+        self.model_path = bert_model
         if hallucination_model:
             self.hallucination_model = hallucination_model
         else:
-            self.hallucination_model = model
+            self.hallucination_model = bert_model
         for i in range(len(metrics)):
             match metrics[i]:
                 case "latency":
@@ -50,7 +50,6 @@ class Eval:
                 case "token_count":
                     self.metric_evaluators.append(self._token_count)
                 case "bert_score":
-                    self.model_path = model
                     try:
                         from bert_score import BERTScorer
                     except ModuleNotFoundError as e:
@@ -83,10 +82,12 @@ class Eval:
                 case "rouge_l_f1":
                     self.metric_evaluators.append(self._rouge_l_f1)
                 case "hallucination_rate":
+                    self.metric_evaluators.append(self._hallucination_rate)
                     try:
                         from deepeval.models.hallucination_model import (
                             HallucinationModel,
                         )
+                        import sentence_transformers
                         logger.debug("Loading h model")
                         from transformers import AutoModel, AutoTokenizer
                         AutoTokenizer.from_pretrained(self.hallucination_model, trust_remote_code=True)
@@ -95,8 +96,8 @@ class Eval:
                         logger.error(
                             f"Vectera Hallucination detection model can not be loaded.\n{e}"
                         )
+                        continue
                     self.hallucination_scorer = HallucinationModel(model_name=self.hallucination_model)
-                    self.metric_evaluators.append(self._hallucination_rate)
                 case "numeric_accuracy":
                     self.metric_evaluators.append(self._numeric_accuracy)
                 case "overlap":
@@ -150,7 +151,7 @@ class Eval:
             logger.error(f"answer is not str: {type(a.text)}")
             return MetricValue(
                 type=MetricType.INVALID,
-                value = -1.0,
+                value = 0.0,
                 matadata = None
             )
         if isinstance(q.ground_true, str):
@@ -159,7 +160,13 @@ class Eval:
             logger.error(f"ground_true is not str: {type(q.ground_true)}")
             return MetricValue(
                 type=MetricType.INVALID,
-                value = -1.0,
+                value = 0.0,
+                matadata = None
+            )
+        if not self.bert_scorer:
+            return MetricValue(
+                type=MetricType.INVALID,
+                value = 0.0,
                 matadata = None
             )
         precision, recall, f1 = self.bert_scorer.score(
@@ -306,7 +313,7 @@ class Eval:
             logger.error("hallucination model not found")
             return MetricValue(
                 type=MetricType.INVALID,
-                value=0,
+                value=0.0,
                 metadata=None
             )
     def _numeric_accuracy(self, q: Question, a: Answer) -> MetricValue:
