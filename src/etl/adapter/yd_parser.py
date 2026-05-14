@@ -23,7 +23,7 @@ class HTMLParser(IParser):
             text = text_node.get_text(separator="\n", strip=True) if text_node else ""
 
             if self.anonymizer:
-                sender_id = sender_id = self.anonymizer._TelegramAnonymizer__get_label(sender_id, "PER")
+                sender_id = self.anonymizer._TelegramAnonymizer__get_label(sender_id, "PER")
                 text = self.anonymizer._TelegramAnonymizer__process_text(text)
            
            
