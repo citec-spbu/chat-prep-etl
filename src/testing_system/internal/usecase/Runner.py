@@ -7,8 +7,6 @@ from datetime import datetime, timezone
 from testing_system.internal.domain.entities import Answer, Experiment, MetricValue, Question
 from testing_system.internal.domain.interfaces import \
     IAssistant, IRetriever, IRegistry
-from testing_system.internal.domain.value_objects import AssistantResponse, \
-    AssistantRequest, RetrievalRequest, RetrievalResponse
 from testing_system.internal.usecase.Eval import Eval
 from testing_system.internal.usecase.ProcessQuery import Processor
 
@@ -20,12 +18,13 @@ class Runner:
                  registry: IRegistry,
                  assistant: IAssistant, 
                  retriever: IRetriever,
+                 eval: Eval,
                  num_process_workers: int = 1,
                  num_eval_workers: int = 1,
                  ):
         self.registry = registry
         self.processor = Processor(assistant, retriever)
-        self.eval = Eval()
+        self.eval = eval
         #   for asyncio
         self.num_process_workers = num_process_workers
         self.num_eval_workers = num_eval_workers
