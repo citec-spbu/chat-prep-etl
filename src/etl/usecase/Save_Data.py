@@ -1,6 +1,4 @@
 from src.etl.domain.interfaces import IRepository
-from loguru import logger
-
 
 class SaveDataUseCase:
     def __init__(self, loader, repository: IRepository):

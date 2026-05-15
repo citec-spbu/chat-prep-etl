@@ -1,7 +1,7 @@
 from typing import List
 from src.etl.domain.interfaces import IDataLoader
 from src.etl.domain.value_objects import MessageMetadata
-from src.etl.adapter.yd_parser import HTMLGrabber, YandexParser
+from src.etl.adapter.yd_parser import HTMLGrabber, ArchiveChatParser
 from src.etl.adapter.tg_grabber import TelegramGrabber
 
 class TelegramLoader(IDataLoader):
@@ -13,9 +13,9 @@ class TelegramLoader(IDataLoader):
 
         return await self.grabber.grab_chat(source)
 
-class YandexLoader(IDataLoader):
+class ArchiveChatLoader(IDataLoader):
 
-    def __init__(self, parser: YandexParser):
+    def __init__(self, parser: ArchiveChatParser):
         self.parser = parser
 
     async def load(self, source: str) -> List[MessageMetadata]:
