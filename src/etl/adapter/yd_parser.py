@@ -80,7 +80,7 @@ class HTMLGrabber:
             content = f.read()
         return await self.parser.parse_batch(content)
     
-class YandexParser:
+class ArchiveChatParser:
     def __init__(self, html_parser: HTMLParser):
         self.html_parser = html_parser
 
