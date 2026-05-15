@@ -256,8 +256,8 @@ class Eval:
             logger.error(f"rouge failed: {e}")
             return MetricValue(
                 type=MetricType.INVALID,
-                value = -1.0,
-                matadata = None
+                value = 0.0,
+                metadata = None
             )
         scorer = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=True)
         scores = scorer.score(q.ground_true, a.text)
@@ -280,6 +280,7 @@ class Eval:
         Returns:
             MetricValue - The computed hallucination score. Lower values indicate greater hallucination.
         """
+        metadata=None
         if isinstance(a.retrieved_context, list):
             source = '\n'.join([d.content for d in a.retrieved_context])
         else:
@@ -287,7 +288,7 @@ class Eval:
             return MetricValue(
                 type=MetricType.INVALID,
                 value = 0,
-                matadata = None
+                metadata = metadata
             )
         if self.hallucination_scorer:
             score = self.hallucination_scorer.model.predict([(source, a.text)])[0]
@@ -314,7 +315,7 @@ class Eval:
             return MetricValue(
                 type=MetricType.INVALID,
                 value=0.0,
-                metadata=None
+                metadata=metadata
             )
     def _numeric_accuracy(self, q: Question, a: Answer) -> MetricValue:
         """
