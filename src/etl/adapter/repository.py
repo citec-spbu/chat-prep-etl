@@ -5,7 +5,7 @@ from qdrant_client import AsyncQdrantClient
 from qdrant_client.http import models
 from dataclasses import asdict
 from fastembed import TextEmbedding
-
+from loguru import logger
 from src.etl.domain.interfaces import IRepository
 from src.etl.domain.value_objects import MessageMetadata
 
@@ -73,13 +73,13 @@ class QdrantFastEmbedRepository(IRepository):
                 )
                 for vector, msg in zip(embeddings, messages)
             ]
-
             self._client.upload_points(
                 collection_name=self._collection_name,
                 points=points,
                 wait=True
             )
         except Exception as e:
+            logger.error(f"Ошибка при сохранении данных: {e}")
             raise
 
 
@@ -123,4 +123,5 @@ class QdrantFastEmbedRepository(IRepository):
             return [MessageMetadata(**hit.payload) for hit in response.points if
                     hit.payload]
         except Exception as e:
+            logger.error(f"Ошибка при выполнении поиска: {e}")
             raise
