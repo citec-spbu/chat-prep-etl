@@ -6,6 +6,7 @@ import shutil
 from dataclasses import replace
 from typing import List, Any, Optional
 from bs4 import BeautifulSoup
+from loguru import logger
 from src.etl.domain.interfaces import IParser
 from src.etl.domain.value_objects import MessageMetadata
 from src.etl.usecase.anonymiser import TelegramAnonymizer
@@ -82,44 +83,46 @@ class HTMLGrabber:
 class YandexParser:
     def __init__(self, html_parser: HTMLParser):
         self.html_parser = html_parser
-        self.base_url = "https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key="
 
-    async def parse(self, public_key: str) -> List[MessageMetadata]:
+    async def parse(self, file_path: str) -> List[MessageMetadata]:
         """
-        public_key: ссылка на Яндекс.Диск
+        Принимает абсолютный путь к локальному ZIP-файлу.
+        Распаковывает его во временную папку и парсит все HTML.
         """
         all_messages = []
-        
-        # 1. Создаем временную директорию для работы
+
+        if not os.path.exists(file_path):
+            logger.error(f"ZIP файл не найден по пути: {file_path}")
+            raise FileNotFoundError(f"Файл {file_path} не существует")
+
+        # 1. Создаем временную директорию
         with tempfile.TemporaryDirectory() as tmp_dir:
-            zip_path = os.path.join(tmp_dir, "download.zip")
             extract_path = os.path.join(tmp_dir, "extracted")
+            
+            # 2. Распаковка
+            try:
+                with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                    zip_ref.extractall(extract_path)
+            except zipfile.BadZipFile:
+                logger.error(f"Файл {file_path} поврежден или не является ZIP-архивом")
+                raise
 
-            # 2. Получаем прямую ссылку на скачивание через API Яндекса
-            response = requests.get(f"{self.base_url}{public_key}")
-            download_url = response.json().get('href')
-
-            if not download_url:
-                raise Exception("Не удалось получить ссылку на скачивание с Яндекс.Диска")
-
-            # 3. Скачиваем ZIP
-            with requests.get(download_url, stream=True) as r:
-                with open(zip_path, 'wb') as f:
-                    shutil.copyfileobj(r.raw, f)
-
-            # 4. Распаковываем
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(extract_path)
-
-            # 5. Ищем все HTML файлы в распакованном архиве и парсим их
-            for root, dirs, files in os.walk(extract_path):
-                for file in files:
+            # 3. Рекурсивный обход распакованных файлов
+            html_files_found = 0
+            for root, _, files in os.walk(extract_path):
+                # Сортируем файлы, чтобы сообщения шли в правильном порядке (messages1, messages2...)
+                for file in sorted(files):
                     if file.endswith(".html"):
+                        html_files_found += 1
                         file_full_path = os.path.join(root, file)
-                        with open(file_full_path, "r", encoding="utf-8") as f:
-                            content = f.read()
-                            # Используем наш HTMLParser для превращения текста в объекты
-                            messages = await self.html_parser.parse_batch(content)
-                            all_messages.extend(messages)
+                        try:
+                            with open(file_full_path, "r", encoding="utf-8") as f:
+                                content = f.read()
+                                # Вызываем HTMLParser для извлечения сообщений
+                                messages = await self.html_parser.parse_batch(content)
+                                all_messages.extend(messages)
+                        except Exception as e:
+                            logger.warning(f"Ошибка при чтении файла {file}: {e}")
+        return all_messages
 
         return all_messages
