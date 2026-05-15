@@ -6,7 +6,7 @@ from src.api.factory import create_client
 from src.etl.adapter.repository import QdrantFastEmbedRepository
 from src.etl.usecase.get_data import GetMessageUseCase
 from src.etl.usecase.Save_Data import SaveDataUseCase
-from src.etl.adapter.loader import TelegramLoader, YandexLoader, HTMLLoader
+from src.etl.adapter.loader import TelegramLoader, ArchiveChatLoader, HTMLLoader
 from src.etl.adapter.tg_grabber import TelegramGrabber, TelegramParser
 from src.etl.adapter.yd_parser import HTMLGrabber, ArchiveChatParser, HTMLParser
 from src.etl.dbconfig import url, api_key, test_collection_name, collection_name
@@ -56,7 +56,7 @@ async def ingest_messages(request: IngestRequest, background_tasks: BackgroundTa
             loader = TelegramLoader(grabber)
         
         elif request.source_type == "yandex":
-            loader = YandexLoader(ArchiveChatParser(HTMLParser(source_name=str(request.chat_id), anonymizer=anonymizer)))
+            loader = ArchiveChatLoader(ArchiveChatParser(HTMLParser(source_name=str(request.chat_id), anonymizer=anonymizer)))
             
         elif request.source_type == "html":
             loader = HTMLLoader(HTMLGrabber(HTMLParser(source_name=str(request.chat_id), anonymizer=anonymizer)))
