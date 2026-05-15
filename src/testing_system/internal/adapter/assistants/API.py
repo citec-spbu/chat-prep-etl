@@ -21,8 +21,9 @@ class OpenAIAssistant(IAssistant):
                  temperature:Optional[float] = 0.9
                  ):
         try:
-            load_dotenv(dotenv_path="/workspace/chat-prep-etl/.env")
-            assert os.getenv("OPENAI_API_KEY") != None, "Need an API KEY to proceed with this adapter"
+            env_path = os.getenv("ENV_FILE_PATH", ".env")
+            load_dotenv(dotenv_path=env_path)
+            assert os.getenv("OPENAI_API_KEY") is not None, "Need an API KEY to proceed with this adapter"
             self.model = ChatOpenAI(
                 base_url=base_url,
                 model=model,
@@ -78,6 +79,6 @@ class OpenAIAssistant(IAssistant):
                 latency_ms = (time.time() - start_time) * 1000,
                 used_prompt=messages[:2],
                 retrieved_context=r.retrieved_context,
-                error = e,
+                error = str(e),
                 metadata=None
             )
