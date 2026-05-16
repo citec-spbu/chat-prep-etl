@@ -1,0 +1,6 @@
+id: baseline_fact_extraction
+prompt:
+  path: prompts/baseline/fact_extraction/prompt.yaml
+
+control_task:
+  path: prompts/control_Task/fact_extraction/control_task.yaml

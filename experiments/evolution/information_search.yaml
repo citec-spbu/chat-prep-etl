@@ -1,0 +1,6 @@
+id: evolution_information_search_structured
+prompt:
+  path: prompts/evolution/information_search/structured.yaml
+
+control_task:
+  path: prompts/control_Task/information_search/control_task.yaml

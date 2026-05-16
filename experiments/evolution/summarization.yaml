@@ -1,0 +1,6 @@
+id: evolution_summarization_structured
+prompt:
+  path: prompts/evolution/summarization/structured.yaml
+
+control_task:
+  path: prompts/control_Task/summarization/control_task.yaml
