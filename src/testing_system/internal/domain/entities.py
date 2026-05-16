@@ -54,8 +54,8 @@ class Experiment:
     """
     id: str
     name: str
-    config: Dict[str, Any]
     questions: List[Question]
+    ground_truth: Dict[str, Any]
     answers: List[Answer]
     metrics: Dict[str, List[MetricValue]]
     started_at: Optional[datetime] = None
