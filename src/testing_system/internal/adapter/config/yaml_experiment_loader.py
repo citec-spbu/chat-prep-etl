@@ -14,17 +14,16 @@ class YamlExperimentLoader(IExperimentLoader):
         config_path = Path(path)
         data = self._read_yaml(config_path)
         prompt = self._load_prompt(data.get("prompt", {}), config_path)
-        temperature = self._temperature(data.get("assistant", {}))
+        raw_queries = self._load_queries(data, config_path)
 
         return Experiment(
             id=data["id"],
-            name=data["name"],
-            config=self._experiment_config(data),
+            name=data.get("name", data["id"]),
             questions=self._questions(
-                raw_queries=data.get("queries", []),
+                raw_queries=raw_queries,
                 system_prompt=prompt,
-                temperature=temperature,
             ),
+            ground_truth=self._ground_truth(raw_queries),
             answers=[],
             metrics=[],
         )
@@ -35,11 +34,6 @@ class YamlExperimentLoader(IExperimentLoader):
         if not isinstance(loaded, dict):
             raise ValueError(f"YAML file must contain a mapping: {path}")
         return loaded
-
-    def _experiment_config(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        config = dict(data)
-        config.pop("queries", None)
-        return config
 
     def _load_prompt(
         self,
@@ -76,22 +70,71 @@ class YamlExperimentLoader(IExperimentLoader):
 
         return "\n\n".join(parts)
 
+    def _load_queries(
+        self,
+        data: Dict[str, Any],
+        config_path: Path,
+    ) -> List[Dict[str, Any]]:
+        if "queries" in data:
+            return data.get("queries", [])
+
+        task_config = data.get("control_task") or data.get("dataset") or {}
+        path = task_config.get("path")
+        if not path:
+            return []
+
+        task_path = Path(path)
+        if not task_path.exists():
+            task_path = config_path.parent / task_path
+
+        task_data = self._read_yaml(task_path)
+        if "queries" in task_data:
+            return task_data.get("queries", [])
+        if "questions" in task_data:
+            return self._queries_from_topic(
+                questions=task_data.get("questions", []),
+                topic=task_data.get("topic", {}),
+            )
+
+        queries = []
+        for topic in task_data.get("topics", []):
+            queries.extend(
+                self._queries_from_topic(
+                    questions=topic.get("questions", []),
+                    topic=topic,
+                )
+            )
+        return queries
+
+    def _queries_from_topic(
+        self,
+        questions: List[Dict[str, Any]],
+        topic: Dict[str, Any],
+    ) -> List[Dict[str, Any]]:
+        topic_name = topic.get("name")
+        queries = []
+        for item in questions:
+            query = dict(item)
+            query.setdefault("metadata", {})
+            if topic_name:
+                query["metadata"]["topic"] = topic_name
+            queries.append(query)
+        return queries
+
     def _questions(
         self,
         raw_queries: List[Dict[str, Any]],
         system_prompt: Optional[str],
-        temperature: Optional[float],
     ) -> List[Question]:
         questions = []
         for raw in raw_queries:
             metadata = dict(raw.get("metadata") or {})
             metadata["system_prompt"] = system_prompt
-            metadata["temperature"] = temperature
 
             questions.append(
                 Question(
                     id=str(raw["id"]),
-                    text=raw["text"],
+                    text=raw.get("text") or raw.get("query") or raw["запрос"],
                     retrieved_context_id=[
                         str(item) for item in raw.get("expected_context_ids", [])
                     ],
@@ -100,10 +143,9 @@ class YamlExperimentLoader(IExperimentLoader):
             )
         return questions
 
-    def _temperature(self, assistant_config: Dict[str, Any]) -> Optional[float]:
-        params = assistant_config.get("params") or {}
-        if "temperature" in params:
-            return params["temperature"]
-
-        generation = params.get("generation") or {}
-        return generation.get("temperature")
+    def _ground_truth(self, raw_queries: List[Dict[str, Any]]) -> Dict[str, Any]:
+        return {
+            str(raw["id"]): raw.get("ground_truth")
+            for raw in raw_queries
+            if "ground_truth" in raw
+        }
