@@ -1,0 +1,6 @@
+id: baseline_chronology
+prompt:
+  path: prompts/baseline/chronology/prompt.yaml
+
+control_task:
+  path: prompts/control_Task/chronology/control_task.yaml
