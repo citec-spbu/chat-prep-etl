@@ -1,0 +1,32 @@
+services:
+  testing-system:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.testing_system
+    image: testing-system:dev
+    ports:
+      - "8881:8501"
+    volumes:
+      # Три папки с данными, которые должны быть доступны и изменяемы с хоста
+      - ./experiments:/experiments
+      - ./experiment_results:/experiment_results
+      - ./prompts:/prompts
+    environment:
+      - EXPERIMENTS_PATH=/experiments
+      - RESULTS_PATH=/experiment_results
+      - PROMPTS_PATH=/prompts
+      # Версия CUDA, если нужна
+      - NVIDIA_VISIBLE_DEVICES=all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    user: "1000:1000"   # принудительно, если внутри образ уже app (uid 1000)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8881/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 1

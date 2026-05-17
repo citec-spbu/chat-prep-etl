@@ -3,6 +3,7 @@ name = "chat-prep-etl"
 version = "0.1.0"
 channels = ["conda-forge"]
 platforms = ["win-64", "linux-64", "osx-arm64"]
+conda-pypi-map = { "conda-forge" = "conda_pypi_mapping.json" }
 
 # --- 1. General ---
 [dependencies]
@@ -52,10 +53,17 @@ python-multipart = "*"
 # --- 4. LLM ---
 [feature.llm.dependencies]
 python = "3.12.*"
+pytorch = "*"
 fastapi = "*"
 uvicorn = "*"
-qdrant-client = "*"
-fastembed = "*"
+langchain-openai = "*"
+bert_score = "*"
+sentence-transformers = "*"
+nltk = "*"
+rouge-score = "*"
+
+[feature.llm.pypi-dependencies]
+deepeval = "*"
 
 # ------
 [environments]

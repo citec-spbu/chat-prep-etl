@@ -1,10 +1,11 @@
 import asyncio
+import os
 import sys
 import logging
 import logging.config
 import yaml
 import sys
-sys.path.append('/workspace/chat-prep-etl/src')
+sys.path.append('/')
 from testing_system.internal.controller.Orchestrator import Orchestrator
 import uvicorn
 
@@ -14,7 +15,7 @@ async def main():
     try:
         config_path = sys.argv[1] #Usage: python -m testing_system.cmd.main <config.yaml>
     except IndexError:
-        config_path = "testing_system/config/config.yaml"
+        config_path = "/testing_system/config/config.yaml"
     try:
         with open(config_path, 'r') as f:
             cfg = yaml.safe_load(f)
@@ -24,7 +25,14 @@ async def main():
     except yaml.YAMLError as e:
         logger.error(f"Failed to parse config file: {e}")
         sys.exit(1)
-
+    cfg["testing_system"]["loaders"]["path"] = os.getenv(
+        "EXPERIMENTS_PATH",
+        cfg["testing_system"]["loaders"]["path"]
+    )
+    cfg["testing_system"]["registries"]["local"]["path"] = os.getenv(
+        "RESULTS_PATH",
+        cfg["testing_system"]["registries"]["local"]["path"]
+    )
     logging.config.dictConfig(cfg.get("logging", {}))
     logger = logging.getLogger(__name__)
     logger.info("Starting Testing System")
@@ -41,6 +49,5 @@ async def main():
     server = uvicorn.Server(config)
     await server.serve()
 
-    return await orchestrator.execute_experiments("/workspace/chat-prep-etl/experiments")
 if __name__ == "__main__":
     asyncio.run(main())

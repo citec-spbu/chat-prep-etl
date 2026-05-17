@@ -28,13 +28,11 @@ testing_system:
   registries:
     type: local
     local:
-      path: "/workspace/chat-prep-etl/experiment_results"
-    postgres:
-      connection_string: "postgresql://..."
+      path: ${EXPERIMENTS_PATH:/experiment_results}
 
   loaders:
     type: yaml
-    path: "/workspace/chat-prep-etl/experiments"
+    path: ${EXPERIMENTS_PATH:/experiments}
 
 logging:
   version: 1
