@@ -81,8 +81,10 @@ async def ingest_messages(request: IngestRequest, background_tasks: BackgroundTa
         # 2. Создаем UseCase и запускаем в фоне
         save_use_case = SaveDataUseCase(loader, repo)
         
-        # Передаем в execute. Если это телеграм, source_path — имя чата.
-        background_tasks.add_task(save_use_case.execute, request.source_path)
+        if request.source_type == "telegram":
+            background_tasks.add_task(save_use_case.execute, request.source_path, limit=request.limit)
+        else:
+            background_tasks.add_task(save_use_case.execute, request.source_path)
 
         return {
             "status": "accepted", 

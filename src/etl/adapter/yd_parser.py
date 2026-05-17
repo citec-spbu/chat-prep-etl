@@ -99,9 +99,13 @@ class ArchiveChatParser:
         with tempfile.TemporaryDirectory() as tmp_dir:
             extract_path = os.path.join(tmp_dir, "extracted")
             
-            # 2. Распаковка
             try:
                 with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                    for member in zip_ref.infolist():
+                        target_path = os.path.abspath(os.path.join(extract_path, member.filename))
+                        # Проверяем, не пытается ли файл выйти из разрешенной папки
+                        if not target_path.startswith(os.path.abspath(extract_path)):
+                             raise Exception(f"Попытка уязвимости Zip Slip! Небезопасный путь: {member.filename}")
                     zip_ref.extractall(extract_path)
             except zipfile.BadZipFile:
                 logger.error(f"Файл {file_path} поврежден или не является ZIP-архивом")

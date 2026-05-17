@@ -67,9 +67,10 @@ class QdrantFastEmbedRepository(IRepository):
                     payload={
                         "chat_id": str(msg.chat_id),
                         "sender_id": str(msg.sender_id),
-                        "text": str(msg.text) ,
+                        # Если текста нет, сохраняем None или пустую строку, не приводя тип вслепую
+                        "text": msg.text if msg.text is not None else "", 
                         "attached_files": msg.attached_files
-             }
+}
                 )
                 for vector, msg in zip(embeddings, messages)
             ]
