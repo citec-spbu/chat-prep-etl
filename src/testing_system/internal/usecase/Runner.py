@@ -66,7 +66,6 @@ class Runner:
             try:
                 loop = asyncio.get_running_loop()
                 processed = await loop.run_in_executor(executor, self._run_process, query)
-                self.experiment.add_answer(processed)
                 await self.eval_queue.put((query,processed))
             except Exception as e:
                 logger.error(f"Processor: Process failed for exp {query.id}: {e}")
@@ -80,9 +79,7 @@ class Runner:
                 loop = asyncio.get_running_loop()
                 evaluated = await loop.run_in_executor(executor, self._run_eval, q, a)
                 logger.info(f"Processor: Query {q.id} completed")
-                
-                for m in evaluated:
-                    self.experiment.add_metric(m)
+                self.experiment.add(a,evaluated)
             except Exception as e:
                 logger.error(f"Processor: Eval failed for query {q.id}: {e}")
             finally:

@@ -25,7 +25,7 @@ class YamlExperimentLoader(IExperimentLoader):
             ),
             ground_truth=self._ground_truth(raw_queries),
             answers=[],
-            metrics=[],
+            metrics={},
         )
 
     def _read_yaml(self, path: Path) -> Dict[str, Any]:
@@ -134,10 +134,7 @@ class YamlExperimentLoader(IExperimentLoader):
             questions.append(
                 Question(
                     id=str(raw["id"]),
-                    text=raw.get("text") or raw.get("query") or raw["запрос"],
-                    retrieved_context_id=[
-                        str(item) for item in raw.get("expected_context_ids", [])
-                    ],
+                    text=raw["text"],
                     metadata=metadata,
                 )
             )

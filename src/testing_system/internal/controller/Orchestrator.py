@@ -1,5 +1,6 @@
 import logging
 
+from testing_system.internal.adapter.assistants.API import OpenAIAssistant
 from testing_system.internal.adapter.assistants.mock import MockAssistant
 from testing_system.internal.adapter.assistants.ollama import OllamaAssistant
 from testing_system.internal.adapter.config.yaml_experiment_loader import YamlExperimentLoader
@@ -23,16 +24,16 @@ class Orchestrator:
     def __init__(self, cfg: dict):
         assistant = self._choose_assistant(cfg["assistants"])
         retriever = self._choose_retriever(cfg["retrievers"])
-        registry = self._choose_registry(cfg["registries"])
+        self.registry = self._choose_registry(cfg["registries"])
         loader = self._choose_loader(cfg["loaders"])
         logger.info("Orchestrator: Adapters are initialized successfully"+
             f"""\n"Orchestrator: init Assistant: {type(assistant)}"""+
             f"""\n"Orchestrator: init Retriever: {type(retriever)}"""+
-            f"""\n"Orchestrator: init Registry: {type(registry)}"""+
+            f"""\n"Orchestrator: init Registry: {type(self.registry)}"""+
             f"""\n"Orchestrator: init Loader: {type(loader)}"""
         )
         self.runner = Runner(
-            registry=registry,
+            registry=self.registry,
             assistant=assistant,
             retriever=retriever,
             eval=Eval(**cfg["eval"]),
@@ -42,13 +43,18 @@ class Orchestrator:
         self.loader = Loader(
             loader = loader
         )
+        self.progress = {"total": 0, "completed": 0}
 
     async def execute_experiments(self, path: str):
         experiments = self.loader.execute(path)
+        self.progress = {"total": len(experiments), "completed": 0}
         for experiment in experiments:
             experiment = await self.runner.run(experiment)
             logger.info(f"Orchestrator: Experiment '{experiment.id}:{experiment.name}' is complete in {experiment.finished_at}")
+            self.progress["completed"] += 1
 
+    def show_experiments(self):
+        return self.registry.select()
 
     def _choose_assistant(self, cfg: dict) -> IAssistant:
         if cfg["type"] == "ollama":
@@ -57,7 +63,6 @@ class Orchestrator:
                 base_url=f"http://{cfg['ollama']['host']}:{cfg['ollama']['port']}"
                 )
         elif cfg["type"] == "cloud":
-            raise NotImplementedError
             return OpenAIAssistant(
                 model=cfg["cloud"]["model"], 
                 base_url=cfg["cloud"]["base_url"],

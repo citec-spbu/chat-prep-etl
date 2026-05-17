@@ -1,10 +1,11 @@
 testing_system:
+  host: "0.0.0.0"
   port: 8501
   num_process_workers: 1
   num_eval_workers: 1
 
   eval:
-    metrics: ["latency","token_count","bert_score","jaccard_distance","rouge_l_f1","hallucination_rate","numeric_accuracy","overlap"]
+    metrics: ["latency", "token_count"] #["latency","token_count","bert_score","jaccard_distance","rouge_l_f1","hallucination_rate","numeric_accuracy","overlap"]
     bert_model: "bert-base-multilingual-cased"
     hallucination_model: "cointegrated/rubert-base-cased-nli-threeway"
 
