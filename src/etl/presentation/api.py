@@ -1,5 +1,5 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, BackgroundTasks, status, Query
+from pydantic import BaseModel, Field
 from typing import Optional
 import os
 from src.api.factory import create_client
@@ -21,9 +21,7 @@ _tg_client = None
 anonymizer = TelegramAnonymizer()
 
 
-@app.on_event("startup")
-async def startup_event():
-    pass
+
 
 async def get_active_tg_client():
     global _tg_client
@@ -40,14 +38,30 @@ async def get_active_tg_client():
 
 
 class IngestRequest(BaseModel):
-    source_type: str  # "telegram", "yandex", "html"
-    source_path: str  # Название чата, ссылка на Я.Диск или путь к файлу
-    chat_id: Optional[int] = 0  # Для телеграма, если нужно указать явно
-    limit: Optional[int] = 100
+    source_type: str = Field(..., description="Допустимые типы: telegram, yandex, html")
+    source_path: str = Field(..., description="Путь к локальному файлу/архиву или имя чата")
+    chat_id: Optional[int] = Field(0, description="Числовой ID чата")
+    limit: Optional[int] = Field(100, description="Лимит сообщений для Telegram API")
 
-@app.post("/ingest")
+@app.post("/ingest", status_code=status.HTTP_202_ACCEPTED)
 async def ingest_messages(request: IngestRequest, background_tasks: BackgroundTasks):
     """Эндпоинт для запуска загрузки данных"""
+
+    allowed_sources = ["telegram", "yandex", "html"]
+    if request.source_type not in allowed_sources:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Неверный тип источника '{request.source_type}'. Допустимые: {', '.join(allowed_sources)}"
+        )
+
+    # 2. Валидация путей файлов (404 Not Found) — проверяем ДО ухода в фоновый поток
+    if request.source_type in ["html", "yandex"]:
+        if not os.path.exists(request.source_path):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Указанный путь не существует или недоступен: '{request.source_path}'"
+            )
+
     try:
         if request.source_type == "telegram":
             client = await get_active_tg_client()
@@ -74,13 +88,22 @@ async def ingest_messages(request: IngestRequest, background_tasks: BackgroundTa
             "status": "accepted", 
             "message": f"Загрузка из {request.source_type} запущена в фоновом режиме"
         }
+    except HTTPException:
+        # Пробрасываем созданные нами HTTPException без изменений
+        raise
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Внутренняя ошибка сервера при запуске задачи: {str(e)}"
+        )
 
 
 @app.get("/search")
-async def search(query: str, chat_id: int, k: int = 1, clean: str = "raw"):
+async def search(query: str = Query(..., description="Твой поисковый запрос (то, что мы тестировали)"),
+                 chat_id: int = Query(..., description="ID чата (например, 101)"),
+                 k: int = Query(1, description="Сколько сообщений вернуть"),
+                 clean: str = Query("raw", description="Нужно ли прогнать через очистку (clear_service)")):
     """
     Семантический поиск по сообщениям.
     :param query: Твой поисковый запрос (то, что мы тестировали)
@@ -88,6 +111,19 @@ async def search(query: str, chat_id: int, k: int = 1, clean: str = "raw"):
     :param k: Сколько сообщений вернуть
     :param clean: Нужно ли прогнать через очистку (clear_service)
     """
+    if not query.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Строка поискового запроса 'query' не может быть пустой"
+        )
+        
+    allowed_clean_modes = ["raw", "clean", "raw+clean"]
+    if clean not in allowed_clean_modes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Неверный режим 'clean'='{clean}'. Допустимые: {', '.join(allowed_clean_modes)}"
+        )
+
     try:
         if clean == "clean":
 
@@ -103,8 +139,13 @@ async def search(query: str, chat_id: int, k: int = 1, clean: str = "raw"):
             return {"message": "Ничего не найдено", "results": []}
             
         return {"results": results}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка на стороне векторного хранилища: {str(e)}"
+        )
 
 if __name__ == "__main__":
     import uvicorn
