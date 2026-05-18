@@ -1,0 +1,30 @@
+FROM ghcr.io/prefix-dev/pixi:0.68.1-noble-cuda-12.9.1 AS build
+
+WORKDIR /testing_system
+COPY pixi.toml ./
+COPY conda_pypi_mapping.json /testing_system/conda_pypi_mapping.json
+RUN pixi install --environment llm-env
+# Генерируем скрипт активации
+RUN pixi shell-hook --environment llm-env > /shell-hook.sh
+RUN echo 'exec "$@"' >> /shell-hook.sh
+
+FROM nvidia/cuda:12.9.1-runtime-ubuntu22.04
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -g 1000 appuser && \
+    useradd -m -u 1000 -g 1000 appuser
+
+WORKDIR /testing_system
+
+COPY --from=build /testing_system/.pixi/envs/llm-env /testing_system/.pixi/envs/llm-env
+COPY --from=build /shell-hook.sh /shell-hook.sh
+RUN mkdir -p /.deepeval && chmod 777 /.deepeval
+RUN mkdir -p /testing_system/.deepeval && chmod 777 /testing_system/.deepeval
+COPY src/testing_system/ /testing_system/
+
+# Точка входа: активируем окружение Pixi, а затем запускаем переданную команду
+ENTRYPOINT ["/bin/bash", "/shell-hook.sh"]
+CMD ["python", "/testing_system/cmd/main.py"]

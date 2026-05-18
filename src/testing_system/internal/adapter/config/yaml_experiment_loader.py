@@ -23,9 +23,8 @@ class YamlExperimentLoader(IExperimentLoader):
                 raw_queries=raw_queries,
                 system_prompt=prompt,
             ),
-            ground_truth=self._ground_truth(raw_queries),
             answers=[],
-            metrics=[],
+            metrics={},
         )
 
     def _read_yaml(self, path: Path) -> Dict[str, Any]:
@@ -127,22 +126,20 @@ class YamlExperimentLoader(IExperimentLoader):
         system_prompt: Optional[str],
     ) -> List[Question]:
         questions = []
+        g_t = self._ground_truth(raw_queries=raw_queries)
         for raw in raw_queries:
             metadata = dict(raw.get("metadata") or {})
             metadata["system_prompt"] = system_prompt
-
             questions.append(
                 Question(
                     id=str(raw["id"]),
                     text=raw.get("text") or raw.get("query") or raw["запрос"],
-                    retrieved_context_id=[
-                        str(item) for item in raw.get("expected_context_ids", [])
-                    ],
+                    ground_true=g_t[str(raw["id"])],
                     metadata=metadata,
                 )
             )
         return questions
-
+    
     def _ground_truth(self, raw_queries: List[Dict[str, Any]]) -> Dict[str, Any]:
         return {
             str(raw["id"]): raw.get("ground_truth")

@@ -7,8 +7,6 @@ from datetime import datetime, timezone
 from testing_system.internal.domain.entities import Answer, Experiment, MetricValue, Question
 from testing_system.internal.domain.interfaces import \
     IAssistant, IRetriever, IRegistry
-from testing_system.internal.domain.value_objects import AssistantResponse, \
-    AssistantRequest, RetrievalRequest, RetrievalResponse
 from testing_system.internal.usecase.Eval import Eval
 from testing_system.internal.usecase.ProcessQuery import Processor
 
@@ -20,12 +18,13 @@ class Runner:
                  registry: IRegistry,
                  assistant: IAssistant, 
                  retriever: IRetriever,
+                 eval: Eval,
                  num_process_workers: int = 1,
                  num_eval_workers: int = 1,
                  ):
         self.registry = registry
         self.processor = Processor(assistant, retriever)
-        self.eval = Eval()
+        self.eval = eval
         #   for asyncio
         self.num_process_workers = num_process_workers
         self.num_eval_workers = num_eval_workers
@@ -52,7 +51,7 @@ class Runner:
         return Answer(
             id = q.id,
             text = response.answer,
-            retrieved_context=q.retrieved_context_id,
+            retrieved_context=response.retrieved_context,
             token_count=response.token_count,
             latency_ms=response.latency_ms,
             metadata=None
@@ -67,7 +66,6 @@ class Runner:
             try:
                 loop = asyncio.get_running_loop()
                 processed = await loop.run_in_executor(executor, self._run_process, query)
-                self.experiment.add_answer(processed)
                 await self.eval_queue.put((query,processed))
             except Exception as e:
                 logger.error(f"Processor: Process failed for exp {query.id}: {e}")
@@ -81,9 +79,7 @@ class Runner:
                 loop = asyncio.get_running_loop()
                 evaluated = await loop.run_in_executor(executor, self._run_eval, q, a)
                 logger.info(f"Processor: Query {q.id} completed")
-                
-                for m in evaluated:
-                    self.experiment.add_metric(m)
+                self.experiment.add(a,evaluated)
             except Exception as e:
                 logger.error(f"Processor: Eval failed for query {q.id}: {e}")
             finally:
@@ -105,7 +101,12 @@ class Runner:
                 use_threads=True) 
         await runner.run(experiment)
         """
-        
+        experiment.config = {
+            "assistant":str(type(self.processor.assistant)),
+            "retriever":str(type(self.processor.retriever)),
+            "registry":str(type(self.registry)),
+            "clean":self.processor.retriever.clean
+        }
         experiment_from_registry = self._exist(experiment=experiment)
         if experiment_from_registry != None:
             logger.info(f"Processor: found {experiment_from_registry.id} Experiment in registry")

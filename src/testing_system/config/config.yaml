@@ -1,14 +1,20 @@
 testing_system:
+  host: "0.0.0.0"
   port: 8501
   num_process_workers: 1
   num_eval_workers: 1
 
+  eval:
+    metrics: ["latency","token_count","bert_score","jaccard_distance","rouge_l_f1","hallucination_rate","numeric_accuracy","overlap"]
+    bert_model: "bert-base-multilingual-cased"
+    hallucination_model: "cointegrated/rubert-base-cased-nli-threeway"
+
   assistants:
-    type: mock          # или cloud
+    type: ollama 
     ollama:
       host: "ollama"
       port: 11434
-      model: "qwen:4b"    # only one model per ollama is available
+      model: "gemma:2b"    # only one model per ollama is available
     cloud:
       base_url: "https://ai.api.cloud.yandex.net/v1"
       model: "gpt://b1gt8b2ef4mq1ufc4dil/gpt-oss-20b/latest"
@@ -17,18 +23,19 @@ testing_system:
   retrievers:
     type: mock
     etl_service:
+      chat_id: 101
+      k: 50
+      host: etl
       port: 1111
 
   registries:
     type: local
     local:
-      path: "/workspace/chat-prep-etl/experiment_results"
-    postgres:
-      connection_string: "postgresql://..."
+      path: ${EXPERIMENTS_PATH:/experiment_results}
 
   loaders:
     type: yaml
-    path: "/workspace/chat-prep-etl/experiments"
+    path: ${EXPERIMENTS_PATH:/experiments}
 
 logging:
   version: 1

@@ -19,7 +19,7 @@ class Processor:
                 metadata: Dict[str,Any] = None
                 ) -> AssistantResponse:
         retrieve_request = RetrievalRequest(
-            query=question
+            query=question,
         )
         retrieve_response = self.retriever.retrieve(request=retrieve_request)
 

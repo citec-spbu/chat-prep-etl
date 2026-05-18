@@ -1,14 +1,11 @@
-from typing import List, Optional
+from testing_system.internal.domain.value_objects import RetrievedDocument
+from testing_system.internal.adapter.assistants.API import OpenAIAssistant
+from testing_system.internal.adapter.retrievers.mock import MockRetriever
+from testing_system.internal.usecase.ProcessQuery import Processor
 
-from testing_system.internal.domain.interfaces import IRetriever
-from testing_system.internal.domain.value_objects import RetrievedDocument, \
-RetrievalRequest, RetrievalResponse
+def API_test():
 
-class MockRetriever(IRetriever):
-    def __init__(self,clean):
-            self.k = 3
-            self.clean = clean
-            self._docs = [
+    documents = [
         RetrievedDocument(
             id = 1,
             content="Рейс SU-1231 вылетает 15.05.26 в 09:40 из Санкт-Петербурга в Сочи, время в пути составит 3 часа 20 минут, приземление по местному времени (разница +0).",
@@ -60,9 +57,29 @@ class MockRetriever(IRetriever):
             metadata=None
         )
     ]
-    
-    def retrieve(self, request: RetrievalRequest) -> RetrievalResponse:
-        return RetrievalResponse(
-            documents=self._docs[:self.k],
-            k=self.k
-        )
+
+    retriever = MockRetriever(documents=documents)
+    assistant = OpenAIAssistant(model="gpt://b1gt8b2ef4mq1ufc4dil/gpt-oss-20b/latest", base_url = "https://ai.api.cloud.yandex.net/v1", temperature=0.9)
+
+    usecase = Processor(
+        assistant=assistant,
+        retriever=retriever
+    )
+
+    questions = [
+        "Во сколько вылетает рейс SU-1231?"
+    ]
+
+    for q in questions:
+        print(f"User: {q}\n")
+        response = usecase.execute(question=q, system_prompt= """Ты помощник, который отвечает на вопросы ТОЛЬКО на основе предоставленных документов.
+
+Правила:
+1. Используй ТОЛЬКО информацию из документов выше
+2. Если в документах нет ответа, скажи: "У меня недостаточно информации для ответа"
+3. Не добавляй свои знания и не делай предположений
+4. Отвечай кратко и точно
+5. При цитировании указывай ID документа
+
+Документы представлены в формате: [ID]. [содержание]""")
+        print(f"Assistant: {response.answer}\n")

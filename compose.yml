@@ -1,0 +1,54 @@
+services:
+  testing-system:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.testing_system
+    image: testing-system:dev
+    ports:
+      - "8881:8501"
+    volumes:
+      # Три папки с данными, которые должны быть доступны и изменяемы с хоста
+      - ./src/testing_system/config:/testing_system/config
+      - ./experiments:/testing_system/experiments
+      - ./experiment_results:/testing_system/experiment_results
+      - ./prompts:/testing_system/prompts
+    environment:
+      - CONFIG_PATH=/testing_system/config/config.yaml
+      - EXPERIMENTS_PATH=/testing_system/experiments
+      - RESULTS_PATH=/testing_system/experiment_results
+      - PROMPTS_PATH=/testing_system/prompts
+      - DEEPEVAL_CACHE_DIR=/tmp/.deepeval
+      # Версия CUDA, если нужна
+      - NVIDIA_VISIBLE_DEVICES=all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    user: "1000:1000"   # принудительно, если внутри образ уже app (uid 1000)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8881/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 1
+      
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all # Use '1' to limit to a single GPU
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
