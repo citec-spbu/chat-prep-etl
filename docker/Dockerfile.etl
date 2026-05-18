@@ -1,0 +1,23 @@
+# Dockerfile
+FROM prefixdev/pixi:latest AS runner
+
+# Устанавливаем рабочую директорию внутри контейнера
+WORKDIR /app
+
+# Копируем файлы конфигурации окружения для Pixi
+COPY pixi.toml pixi.lock ./
+
+# Производим установку зависимостей (создаем etl-env окружение)
+RUN pixi install --environment etl-env --frozen
+
+# Копируем исходный код нашего ETL (перенесенного в presentation)
+COPY src/etl/ ./src/etl/
+
+# Создаем папки для логов, сессий Телеграма и временных zip-архивов
+RUN mkdir -p logs sessions temp_extracted
+
+# Открываем порт, на котором будет крутиться FastAPI
+EXPOSE 8067
+
+# Запускаем наш сервис через pixi в нужном окружении
+CMD ["pixi", "run", "python", "-m", "src.etl.presentation.api"]
