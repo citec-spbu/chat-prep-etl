@@ -26,7 +26,6 @@ Chat Preparation ETL — это инструмент для обработки, 
 
 # Архитектура проекта
 <img width="2640" height="1222" alt="image" src="https://github.com/user-attachments/assets/b4024abc-df87-4235-a2a7-feaa2e227568" />
-ссылка на доску в MIRO: https://miro.com/welcomeonboard/ZFpJZmhnMUxKRXpGT2xMSHdiQTJPSm1wZnFNUWxCTDhOR05ySkdMb2xNS0JUM2xmOXBHOFlvZ2s4bDVzeXJFa2tqOW5uZWZaaXdPS044dlg1d3AyU2tBODJyMEltR0pZeE16Z3VaL1BkM3VlNmt6VStic2xRVVVDQ3FuU3VWamFBS2NFMDFkcUNFSnM0d3FEN050ekl3PT0hdjE=?share_link_id=218695863047
 
 На схеме выше представлен общий pipeline проекта и взаимодействие основных компонентов системы.
 
@@ -51,25 +50,6 @@ MessageMetadata:
 ```
 
 Именно в этом формате сообщения проходят через все этапы ETL pipeline.
-
-Сервис разделен на 4 основных блока:
-#### 1) Presentation Layer
-Отвечает за взаимодействие пользователя с системой через API и Streamlit frontend.
-#### 2) Application Layer
-Содержит основную бизнес-логику ETL pipeline:
-- parsing;
-- anonymization;
-- cleaning;
-- orchestration обработки данных.
-#### 3)Domain Layer
-Содержит основные сущности и интерфейсы системы.
-#### 4)Adapter Layer
-Отвечает за интеграцию с внешними сервисами:
-- Telegram API;
-- Yandex Disk;
-- Qdrant;
-- Ollama.
-
 После обработки данные преобразуются в embeddings и сохраняются в vector database для semantic search.
 
 ---
@@ -143,6 +123,8 @@ Experiment:
 - Python
 - FastAPI
 - AsyncIO
+- telethon
+- qrant-client
 
 ## Frontend
 - Streamlit
@@ -161,10 +143,6 @@ Experiment:
 - HuggingFace
 - API adapters
 
-## Version Control
-- Git
-- GitHub
-
 ---
 
 # Запуск проекта
@@ -182,7 +160,3 @@ streamlit run frontend/streamlit_app.py
 ```
 
 ---
-
-# Важное ограничение
-
-Необезличенные датасеты запрещено загружать в GitHub repository.
