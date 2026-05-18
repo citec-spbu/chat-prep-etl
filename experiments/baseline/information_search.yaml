@@ -1,0 +1,6 @@
+id: baseline_information_search
+prompt:
+  path: prompts/baseline/information_search/prompt.yaml
+
+control_task:
+  path: prompts/control_Task/information_search/control_task.yaml

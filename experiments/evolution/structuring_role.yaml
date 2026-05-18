@@ -1,0 +1,6 @@
+id: evolution_structuring_role
+prompt:
+  path: prompts/evolution/structuring/role.yaml
+
+control_task:
+  path: prompts/control_Task/structuring/control_task.yaml

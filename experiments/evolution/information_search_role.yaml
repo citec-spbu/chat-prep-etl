@@ -1,0 +1,6 @@
+id: evolution_information_search_role
+prompt:
+  path: prompts/evolution/information_search/role.yaml
+
+control_task:
+  path: prompts/control_Task/information_search/control_task.yaml
