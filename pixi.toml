@@ -56,18 +56,11 @@ python = "3.12.*"
 pytorch = "*"
 fastapi = "*"
 uvicorn = "*"
-pydantic = ">=2.5,<3"
-langchain = ">=0.3.0"
-langchain-openai = ">=0.1.0"
+langchain-openai = "*"
 bert_score = "*"
-sentence-transformers = "*"
+transformers = "*"
 nltk = "*"
-rouge-score = "*"
-tenacity = ">=8.4.1,<9.0.0"
-rich = ">=13.6.0,<15.0.0"
-
-[feature.llm.pypi-dependencies]
-deepeval = ">=0.27.0"        
+rouge-score = "*"     
 
 # ------
 [environments]

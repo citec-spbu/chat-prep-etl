@@ -10,7 +10,7 @@ testing_system:
     hallucination_model: "cointegrated/rubert-base-cased-nli-threeway"
 
   assistants:
-    type: ollama          # или cloud
+    type: ollama 
     ollama:
       host: "ollama"
       port: 11434

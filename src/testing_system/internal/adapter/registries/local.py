@@ -47,8 +47,8 @@ class LocalRegistry(IRegistry):
     def select(self, latest: Optional[int] = None) -> List[Experiment]:
         exps = sorted(
             self._experiments.values(),
-            key=lambda e: e.started_at,
-            reverse=True,
+            key=lambda e: e.name,
+            reverse=False,
         )
         if latest is not None:
             exps = exps[:latest]

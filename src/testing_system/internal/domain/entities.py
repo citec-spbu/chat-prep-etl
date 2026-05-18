@@ -55,9 +55,9 @@ class Experiment:
     id: str
     name: str
     questions: List[Question]
-    ground_truth: Dict[str, Any]
     answers: List[Answer]
-    metrics: Dict[str, List[MetricValue]]
+    config: Optional[Dict[str, Any]] = None
+    metrics: Optional[Dict[str, List[MetricValue]]] = None
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
 

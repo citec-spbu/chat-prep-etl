@@ -84,20 +84,26 @@ class Eval:
                 case "hallucination_rate":
                     self.metric_evaluators.append(self._hallucination_rate)
                     try:
-                        from deepeval.models.hallucination_model import (
-                            HallucinationModel,
-                        )
-                        import sentence_transformers
-                        logger.debug("Loading h model")
-                        from transformers import AutoModel, AutoTokenizer
-                        AutoTokenizer.from_pretrained(self.hallucination_model, trust_remote_code=True)
-                        AutoModel.from_pretrained(self.hallucination_model, trust_remote_code=True)
-                    except ImportError as e:
-                        logger.error(
-                            f"Vectera Hallucination detection model can not be loaded.\n{e}"
-                        )
+                        from transformers import AutoTokenizer, AutoModelForSequenceClassification
+                        import torch
+                        class FastHallu:
+                            def __init__(self, model_name):
+                                self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+                                self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+                                self.model = AutoModelForSequenceClassification.from_pretrained(model_name).to(self.device)
+                                self.model.eval()
+                            def predict(self, pairs):
+                                results = []
+                                for p, h in pairs:
+                                    inputs = self.tokenizer(p, h, return_tensors='pt', truncation=True, max_length=512).to(self.device)
+                                    with torch.no_grad():
+                                        logits = self.model(**inputs).logits.cpu().numpy()[0]  # [entail, neutral, contradict]
+                                    results.append(logits)
+                                return results
+                        self.hallucination_scorer = FastHallu(self.hallucination_model or 'MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli')
+                    except Exception as e:
+                        logger.error(f"Hallu model error: {e}")
                         continue
-                    self.hallucination_scorer = HallucinationModel(model_name=self.hallucination_model)
                 case "numeric_accuracy":
                     self.metric_evaluators.append(self._numeric_accuracy)
                 case "overlap":
@@ -291,7 +297,7 @@ class Eval:
                 metadata = metadata
             )
         if self.hallucination_scorer:
-            score = self.hallucination_scorer.model.predict([(source, a.text)])[0]
+            score = self.hallucination_scorer.predict([(source, a.text)])[0]
             if isinstance(score, np.ndarray) and len(score) == 3:
                 hallucination_index = float(score[2]) - float(score[0]) 
                 e_x = np.exp(score - np.max(score))
