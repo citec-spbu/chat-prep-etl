@@ -4,8 +4,8 @@ from qdrant_client import QdrantClient
 from qdrant_client.http import models
 
 from src.etl.dbconfig import url, api_key, collection_name, test_collection_name
-from src.etl.internal.adapter.repository import QdrantFastEmbedRepository
-from src.etl.internal.domain.value_objects import MessageMetadata
+from src.etl.adapter.repository import QdrantFastEmbedRepository
+from src.etl.domain.value_objects import MessageMetadata
 
 
 async def test():
@@ -13,7 +13,7 @@ async def test():
     API_KEY = api_key
     COLLECTION_NAME = test_collection_name
 
-    client = QdrantClient(url=URL, api_key=API_KEY)
+    client = QdrantClient(url=URL, api_key=API_KEY, check_compatibility=False)
 
     if client.collection_exists(collection_name=COLLECTION_NAME):
         client.delete_collection(collection_name=COLLECTION_NAME)
