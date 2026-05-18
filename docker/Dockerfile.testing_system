@@ -4,7 +4,6 @@ WORKDIR /testing_system
 COPY pixi.toml pixi.lock ./
 COPY conda_pypi_mapping.json /testing_system/conda_pypi_mapping.json
 RUN pixi install --environment llm-env --frozen
-
 # Генерируем скрипт активации
 RUN pixi shell-hook --environment llm-env > /shell-hook.sh
 RUN echo 'exec "$@"' >> /shell-hook.sh
@@ -22,7 +21,8 @@ WORKDIR /testing_system
 
 COPY --from=build /testing_system/.pixi/envs/llm-env /testing_system/.pixi/envs/llm-env
 COPY --from=build /shell-hook.sh /shell-hook.sh
-
+RUN mkdir -p /.deepeval && chmod 777 /.deepeval
+RUN mkdir -p /testing_system/.deepeval && chmod 777 /testing_system/.deepeval
 COPY src/testing_system/ /testing_system/
 
 # Точка входа: активируем окружение Pixi, а затем запускаем переданную команду

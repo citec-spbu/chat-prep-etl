@@ -101,7 +101,12 @@ class Runner:
                 use_threads=True) 
         await runner.run(experiment)
         """
-        
+        experiment.config = {
+            "assistant":str(type(self.processor.assistant)),
+            "retriever":str(type(self.processor.retriever)),
+            "registry":str(type(self.registry)),
+            "clean":self.processor.retriever.clean
+        }
         experiment_from_registry = self._exist(experiment=experiment)
         if experiment_from_registry != None:
             logger.info(f"Processor: found {experiment_from_registry.id} Experiment in registry")

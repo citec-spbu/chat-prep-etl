@@ -18,18 +18,36 @@ class LocalRegistry(IRegistry):
         self._experiments: Dict[str, Experiment] = {}
         self._load()
 
+    def _index(self, experiment: Experiment) -> str:
+        assistant_config = experiment.config["assistant"]
+        retriever_config = experiment.config["retriever"]
+        registry_config = experiment.config["registry"]
+        clean_config = experiment.config["clean"]
+        assert isinstance(assistant_config, str)
+        assert isinstance(retriever_config, str)
+        assert isinstance(registry_config, str)
+        assert isinstance(clean_config, str)
+        return experiment.id+'.'+'.'.join([
+            assistant_config.split('.')[-1][:-2],
+            retriever_config.split('.')[-1][:-2],
+            registry_config.split('.')[-1][:-2],
+            clean_config
+        ])
+
     def push(self, experiment: Experiment) -> None:
         self._save_one(experiment)
-        self._experiments[experiment.id] = experiment
-        logger.info("Experiment %s saved to local registry", experiment.id)
+        index = self._index(experiment=experiment)
+        self._experiments[index] = experiment
+        logger.info("Experiment %s saved to local registry", index)
 
     def check(self, experiment: Experiment) -> Optional[Experiment]:
-        return self._experiments.get(experiment.id, None)
+        index = self._index(experiment=experiment)
+        return self._experiments.get(index, None)
 
     def select(self, latest: Optional[int] = None) -> List[Experiment]:
         exps = sorted(
             self._experiments.values(),
-            key=lambda e: e.finished_at or e.started_at or "",
+            key=lambda e: e.started_at,
             reverse=True,
         )
         if latest is not None:
@@ -44,8 +62,9 @@ class LocalRegistry(IRegistry):
             try:
                 data = json.loads(file_path.read_text(encoding="utf-8"))
                 exp = Experiment(**data)
-                self._experiments[exp.id] = exp
-                logger.debug("Loaded experiment %s from %s", exp.id, file_path)
+                index = self._index(experiment=exp)
+                self._experiments[index] = exp
+                logger.debug("Loaded experiment %s from %s", index, file_path)
             except Exception:
                 logger.exception("Failed to load experiment from %s, skipping", file_path)
 
@@ -53,7 +72,8 @@ class LocalRegistry(IRegistry):
         self._output_dir.mkdir(parents=True, exist_ok=True)
         if "/" in experiment.id or "\\" in experiment.id or ".." in experiment.id:
             raise ValueError(f"Invalid experiment id: {experiment.id}")
-        target = self._output_dir / f"{experiment.id}.json"
+        index = self._index(experiment=experiment)
+        target = self._output_dir / f"{index}.json"
         tmp = target.with_suffix(".tmp")
         try:
             tmp.write_text(

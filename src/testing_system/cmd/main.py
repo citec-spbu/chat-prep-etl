@@ -15,7 +15,10 @@ async def main():
     try:
         config_path = sys.argv[1] #Usage: python -m testing_system.cmd.main <config.yaml>
     except IndexError:
-        config_path = "/testing_system/config/config.yaml"
+        config_path = os.getenv(
+            "CONFIG_PATH",
+            "/testing_system/config/config.yaml"
+        )
     try:
         with open(config_path, 'r') as f:
             cfg = yaml.safe_load(f)
@@ -38,7 +41,6 @@ async def main():
     logger.info("Starting Testing System")
     logger.info(f"Evaluation is provided by {cfg['testing_system']['eval']}")
     orchestrator = Orchestrator(cfg["testing_system"])
-
     app = create_app(orchestrator=orchestrator, config=cfg, logger=logger)
     config = uvicorn.Config(
         app,

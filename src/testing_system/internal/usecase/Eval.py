@@ -165,7 +165,7 @@ class Eval:
             return MetricValue(
                 type=MetricType.INVALID,
                 value = 0.0,
-                matadata = None
+                metadata = None
             )
         if isinstance(q.ground_true, str):
             references = [q.ground_true]
@@ -174,13 +174,13 @@ class Eval:
             return MetricValue(
                 type=MetricType.INVALID,
                 value = 0.0,
-                matadata = None
+                metadata = None
             )
         if not self.bert_scorer:
             return MetricValue(
                 type=MetricType.INVALID,
                 value = 0.0,
-                matadata = None
+                metadata = None
             )
         precision, recall, f1 = self.bert_scorer.score(
             cands=predictions, refs=references
