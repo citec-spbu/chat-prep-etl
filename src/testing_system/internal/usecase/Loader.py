@@ -18,7 +18,7 @@ class Loader:
             raise FileNotFoundError
         if not folder_path.is_dir():
             raise NotADirectoryError
-        for file in folder_path.glob('*.y*ml'): #it is not good to be here, it must be in Yaml loader
+        for file in folder_path.rglob('*.y*ml'): #it is not good to be here, it must be in Yaml loader
             if file.is_file():
                 experiments.append(self.loader.load(file))
                 
