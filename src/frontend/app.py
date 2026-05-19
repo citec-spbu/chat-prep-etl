@@ -111,13 +111,13 @@ try:
     health_response = check_health()
 
     if health_response.status_code == 200:
-        st.success("🟢 Backend Online")
+        st.success("🟢 System up")
 
     else:
-        st.error("🔴 Backend Error")
+        st.error("🔴 System down")
 
 except Exception:
-    st.error("🔴 Backend Offline")
+    st.error("🔴 System Offline")
 
 col1, col2, col3, col4 = st.columns(4)
 
