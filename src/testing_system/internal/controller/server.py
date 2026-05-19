@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from typing import List, Optional
 import asyncio
 
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, Query
 from pydantic import BaseModel
 
 from testing_system.internal.controller.Orchestrator import Orchestrator
@@ -47,12 +47,12 @@ def create_app(
         return orchestrator.progress
 
     @app.get("/experiments", response_model=List[Experiment])
-    async def list_experiments():
+    async def list_experiments(k: int = Query(..., description="Количество последних экспериментов")):
         """Возвращает список известных экспериментов с их статусами."""
         if orchestrator is None:
             raise HTTPException(status_code=503, detail="Service not initialized")
         try:
-            experiments = orchestrator.show_experiments()
+            experiments = orchestrator.show_experiments(latest = k)
             return experiments
         except Exception as e:
             logger.exception("Failed to list experiments")

@@ -1,9 +1,13 @@
+import json
+import logging
+
 from testing_system.internal.domain.value_objects import \
     AssistantRequest, AssistantResponse
 from testing_system.internal.domain.interfaces import IAssistant
 import requests
 import time
 
+logger = logging.getLogger(__name__)
 
 class OllamaAssistant(IAssistant):
     def __init__(self, 
@@ -21,17 +25,35 @@ class OllamaAssistant(IAssistant):
             response = requests.get(f"{self.base_url}/api/tags", timeout=10)
         except requests.ConnectionError:
             raise RuntimeError(f"Ollama not available at {self.base_url}")
-        
+        logger.debug(f"responce is recieved from ollama: {response}")
         models = response.json().get("models", [])
         model_names = [m["name"] for m in models]
         
         if self.model not in model_names:
-            print(f"Downloading model {self.model}...")
+            logger.info(f"Downloading model {self.model}...")
             response = requests.post(
                 f"{self.base_url}/api/pull",
                 json={"name": self.model},
-                stream=True  
-            ).json()
+                stream=True
+            )
+            response.raise_for_status()
+            previous_status = None   # <--- объявляем ДО цикла
+            for line in response.iter_lines(decode_unicode=True):
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                    current_status = data.get("status")
+                    if current_status != previous_status:
+                        previous_status = current_status
+                        logger.info(f"Pull status: {current_status}")
+                    if current_status == "success":
+                        break
+                    if data.get("error"):
+                        raise Exception(f"Ollama error: {data['error']}")
+                except json.JSONDecodeError as e:
+                    logger.error(f"Failed to parse line: {line}, error: {e}")
+                    raise
             if response.status_code != 200:
                 raise RuntimeError(f"Failed to pull model: {response.text}")
 
@@ -54,12 +76,14 @@ class OllamaAssistant(IAssistant):
                     "stream": False
                 },
                 timeout=60
-            ).json()
+            )
+            response.raise_for_status()
+            response = response.json()
             prompt_tokens = response.get("prompt_eval_count", 0)
             response_tokens = response.get("eval_count", 0)
             total_tokens = prompt_tokens + response_tokens
             return AssistantResponse(
-                answer = response["response"],
+                answer = response.get("response",""),
                 token_count=total_tokens,
                 latency_ms = (time.time() - start_time) * 1000,
                 used_prompt=full_prompt,

@@ -51,7 +51,7 @@ class LocalRegistry(IRegistry):
             reverse=False,
         )
         if latest is not None:
-            exps = exps[:latest]
+            exps = exps[:min(latest, len(exps))]
         return exps
 
     def _load(self) -> None:

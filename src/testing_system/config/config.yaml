@@ -21,12 +21,12 @@ testing_system:
       temperature: 0.3
 
   retrievers:
-    type: mock
+    type: etl_service
     etl_service:
-      chat_id: 101
-      k: 50
-      host: etl
-      port: 1111
+      chat_id: 0
+      k: 15
+      host: 100.76.31.66
+      port: 8067
 
   registries:
     type: local
