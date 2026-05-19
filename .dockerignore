@@ -1,0 +1,8 @@
+.git
+.pixi
+__pycache__
+*.pyc
+logs/
+sessions/
+temp_extracted/
+.env

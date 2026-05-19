@@ -1,0 +1,6 @@
+id: baseline_structuring
+prompt:
+  path: prompts/baseline/structuring/prompt.yaml
+
+control_task:
+  path: prompts/control_Task/structuring/control_task.yaml

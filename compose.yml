@@ -1,0 +1,105 @@
+version: '3.8'
+services:
+  testing-system:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.testing_system
+    image: testing-system:dev
+    ports:
+      - "8881:8501"
+    volumes:
+      # Три папки с данными, которые должны быть доступны и изменяемы с хоста
+      - ./src/testing_system/config:/testing_system/config
+      - ./experiments:/testing_system/experiments
+      - ./experiment_results:/testing_system/experiment_results
+      - ./prompts:/testing_system/prompts
+    environment:
+      - CONFIG_PATH=/testing_system/config/config.yaml
+      - EXPERIMENTS_PATH=/testing_system/experiments
+      - RESULTS_PATH=/testing_system/experiment_results
+      - PROMPTS_PATH=/testing_system/prompts
+      - DEEPEVAL_CACHE_DIR=/tmp/.deepeval
+      # Версия CUDA, если нужна
+      - NVIDIA_VISIBLE_DEVICES=all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    user: "1000:1000"   # принудительно, если внутри образ уже app (uid 1000)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8881/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 1
+      
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all # Use '1' to limit to a single GPU
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  etl-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.etl
+    container_name: chat-prep-etl-service
+    ports:
+      - "8067:8067"
+    volumes:
+      # Монтируем локальные папки, чтобы логи и сессии TG не стирались при перезапуске контейнера
+      - ./logs:/app/logs
+      - ./sessions:/app/sessions
+      # Сюда ты сможешь закидывать ZIP-архивы для инжеста с локальной машины
+      - ./zipdata:/app/zipdata 
+    environment:
+      # Подтягиваем всё из файла .env
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_API_KEY=bee
+      - QDRANT_COLLECTION_NAME=messages
+      - TG_API_ID=${TG_API_ID}
+      - TG_API_HASH=${TG_API_HASH}
+      - TG_PROXY_ADDR=host.docker.internal
+      - TG_PROXY_PORT=10808
+      - TG_PROXY_TYPE=socks5
+      # Переменные для Telegram (подтянутся из твоего .env файла на хосте)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - qdrant
+    networks:
+      - chat-network
+
+  # Официальный контейнер векторной базы Qdrant
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant-vector-db
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      # Сохраняем базу данных на жестком диске хоста, чтобы данные не пропадали
+      - ./qdrant_storage:/qdrant/storage:z
+      - ./zipdata:/app/data
+    networks:
+      - chat-network
+
+networks:
+  chat-network:
+    driver: bridge
+
+
+volumes:
+  ollama_data:

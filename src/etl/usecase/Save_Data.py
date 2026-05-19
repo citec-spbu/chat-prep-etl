@@ -8,4 +8,5 @@ class SaveDataUseCase:
     async def execute(self, source: str):
         messages = await self.loader.load(source)
 
+
         await self.repository.save_batch(messages)

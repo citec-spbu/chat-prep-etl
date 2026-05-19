@@ -1,0 +1,6 @@
+id: evolution_discussion_analysis_role
+prompt:
+  path: prompts/evolution/discussion_analysis/role.yaml
+
+control_task:
+  path: prompts/control_Task/discussion_analysis/control_task.yaml

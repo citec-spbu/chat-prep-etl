@@ -1,5 +1,0 @@
-telethon == 1.42.0
-python-dotenv == 1.2.2
-natahsa == 1.6.0
-pandas == 2.0.3
-bs4 == 0.0.2

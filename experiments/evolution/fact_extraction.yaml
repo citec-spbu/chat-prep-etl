@@ -1,0 +1,6 @@
+id: evolution_fact_extraction_structured
+prompt:
+  path: prompts/evolution/fact_extraction/structured.yaml
+
+control_task:
+  path: prompts/control_Task/fact_extraction/control_task.yaml

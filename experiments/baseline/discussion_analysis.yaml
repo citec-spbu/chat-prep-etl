@@ -1,0 +1,6 @@
+id: baseline_discussion_analysis
+prompt:
+  path: prompts/baseline/discussion_analysis/prompt.yaml
+
+control_task:
+  path: prompts/control_Task/discussion_analysis/control_task.yaml

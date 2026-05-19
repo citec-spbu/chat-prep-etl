@@ -3,15 +3,16 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, List, Any, Dict
 
+from testing_system.internal.domain.value_objects import RetrievedDocument
+
 @dataclass
 class Question:
     """
     The question for the assistant
-    TODO there should be system prompt, i think
     """
     id: str
     text: str
-    retrieved_context_id: Optional[List[str]] = None # for RECALL
+    ground_true: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
 @dataclass
@@ -19,17 +20,23 @@ class Answer:
     """The assistant`s answer (text and details)"""
     id: str
     text: str
-    retrieved_context: List[str] # ID of the documents used
+    retrieved_context: List[RetrievedDocument]
     token_count: int 
     latency_ms: float 
     metadata: Optional[Dict[str,Any]] = None
 
 class MetricType(Enum):
-    PRECISION = "precision"
-    RECALL = "recall"
+    INVALID = "invalid"
+    EXACT_MATCH = "exact_match"
+    NUMERIC_ACCURACY = "numeric_accuracy"
+    OVERLAP = "overlap"
+    JACCARD = "jaccard_distance"
+    ROUGE_L_F1 = "rouge_l_f1"
+
+    BERT_SCORE = "bert_score"
     HALLUCINATION_RATE = "hallucination_rate"
+    
     TOKEN_COUNT = "token_count"
-    REUSABILITY = "reusability"
     LATENCY = "latency"
 
 @dataclass
@@ -47,18 +54,13 @@ class Experiment:
     """
     id: str
     name: str
-    config: Dict[str, Any]
     questions: List[Question]
     answers: List[Answer]
-    metrics: List[MetricValue]
+    config: Optional[Dict[str, Any]] = None
+    metrics: Optional[Dict[str, List[MetricValue]]] = None
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
 
-    def add_answer(self, answer: Answer) -> None:
+    def add(self, answer: Answer, m: List[MetricValue]) -> None:
         self.answers.append(answer)
-    
-    def add_metric(self, metric: MetricValue) -> None:
-        self.metrics.append(metric)
-
-    def is_complete(self) -> bool:
-        return len(self.answers) == len(self.questions) and len(self.metrics) == len(self.questions)
+        self.metrics[answer.id] = m

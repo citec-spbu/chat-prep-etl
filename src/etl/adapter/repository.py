@@ -5,9 +5,9 @@ from qdrant_client import AsyncQdrantClient
 from qdrant_client.http import models
 from dataclasses import asdict
 from fastembed import TextEmbedding
-
-from src.etl.internal.domain.interfaces import IRepository
-from src.etl.internal.domain.value_objects import MessageMetadata
+from loguru import logger
+from src.etl.domain.interfaces import IRepository
+from src.etl.domain.value_objects import MessageMetadata
 
 
 class QdrantFastEmbedRepository(IRepository):
@@ -31,6 +31,19 @@ class QdrantFastEmbedRepository(IRepository):
         self._collection_name = collection_name
         self._model = TextEmbedding(
             model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+        
+
+    async def _ensure_collection(self):
+        """Проверяет существование коллекции и создает её, если нужно"""
+        exists = await self._client.collection_exists(self._collection_name)
+        if not exists:
+            await self._client.create_collection(
+                collection_name=self._collection_name,
+                vectors_config=models.VectorParams(
+                    size=384,
+                    distance=models.Distance.COSINE
+                    )
+              )
 
     async def save_batch(self, messages: List[MessageMetadata]) -> None:
         """
@@ -43,6 +56,7 @@ class QdrantFastEmbedRepository(IRepository):
             Exception: В случае ошибки при векторизации или сетевом запросе к Qdrant.
         """
         try:
+            await self._ensure_collection()
             texts = [m.text if m.text else "" for m in messages]
             embeddings = await asyncio.to_thread(lambda: list(self._model.embed(texts)))
 
@@ -50,18 +64,26 @@ class QdrantFastEmbedRepository(IRepository):
                 models.PointStruct(
                     id=str(uuid.uuid4()),
                     vector=vector.tolist(),
-                    payload=asdict(msg)
+                    payload={
+                        "chat_id": str(msg.chat_id),
+                        "sender_id": str(msg.sender_id),
+                        # Если текста нет, сохраняем None или пустую строку, не приводя тип вслепую
+                        "text": msg.text if msg.text is not None else "", 
+                        "attached_files": msg.attached_files
+}
                 )
                 for vector, msg in zip(embeddings, messages)
             ]
-
             self._client.upload_points(
                 collection_name=self._collection_name,
                 points=points,
                 wait=True
             )
         except Exception as e:
+            logger.error(f"Ошибка при сохранении данных: {e}")
             raise
+
+
 
     async def search_similar(self, query_text: str, chat_id: int, k: int) -> List[
         MessageMetadata]:
@@ -91,7 +113,7 @@ class QdrantFastEmbedRepository(IRepository):
                     must=[
                         models.FieldCondition(
                             key="chat_id",
-                            match=models.MatchValue(value=chat_id)
+                            match=models.MatchValue(value=str(chat_id))
                         )
                     ]
                 ),
@@ -102,4 +124,5 @@ class QdrantFastEmbedRepository(IRepository):
             return [MessageMetadata(**hit.payload) for hit in response.points if
                     hit.payload]
         except Exception as e:
+            logger.error(f"Ошибка при выполнении поиска: {e}")
             raise

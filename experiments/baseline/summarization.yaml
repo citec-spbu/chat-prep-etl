@@ -1,0 +1,6 @@
+id: baseline_summarization
+prompt:
+  path: prompts/baseline/summarization/prompt.yaml
+
+control_task:
+  path: prompts/control_Task/summarization/control_task.yaml

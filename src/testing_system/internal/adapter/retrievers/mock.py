@@ -5,8 +5,9 @@ from testing_system.internal.domain.value_objects import RetrievedDocument, \
 RetrievalRequest, RetrievalResponse
 
 class MockRetriever(IRetriever):
-    def __init__(self):
-            self.top_k = 3
+    def __init__(self,clean):
+            self.k = 3
+            self.clean = clean
             self._docs = [
         RetrievedDocument(
             id = 1,
@@ -62,6 +63,6 @@ class MockRetriever(IRetriever):
     
     def retrieve(self, request: RetrievalRequest) -> RetrievalResponse:
         return RetrievalResponse(
-            documents=self._docs[:self.top_k],
-            k=self.top_k
+            documents=self._docs[:self.k],
+            k=self.k
         )

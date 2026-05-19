@@ -1,0 +1,6 @@
+id: evolution_chronology_role
+prompt:
+  path: prompts/evolution/chronology/role.yaml
+
+control_task:
+  path: prompts/control_Task/chronology/control_task.yaml

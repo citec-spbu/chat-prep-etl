@@ -63,6 +63,7 @@ class OllamaAssistant(IAssistant):
                 token_count=total_tokens,
                 latency_ms = (time.time() - start_time) * 1000,
                 used_prompt=full_prompt,
+                retrieved_context=r.retrieved_context,
                 error = None if response.get("done_reason") == "stop" else str(response.get("done_reason")),
                 metadata=None
             )
@@ -72,6 +73,7 @@ class OllamaAssistant(IAssistant):
                 token_count=0,
                 latency_ms=0,
                 used_prompt=full_prompt,
+                retrieved_context=r.retrieved_context,
                 error=f"Ollama error: {str(e)}",
                 metadata=None
             )

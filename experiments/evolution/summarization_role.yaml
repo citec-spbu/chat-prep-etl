@@ -1,0 +1,6 @@
+id: evolution_summarization_role
+prompt:
+  path: prompts/evolution/summarization/role.yaml
+
+control_task:
+  path: prompts/control_Task/summarization/control_task.yaml
