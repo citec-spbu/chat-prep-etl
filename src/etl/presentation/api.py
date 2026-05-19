@@ -31,7 +31,7 @@ class SendCodeRequest(BaseModel):
 class LoginRequest(BaseModel):
     phone: str = Field(..., description="Номер телефона")
     code: str = Field(..., description="Код подтверждения из Телеграма")
-
+    password: Optional[str] = Field(None, description="Облачный пароль (двухфакторная аутентификация 2FA), если включен")
 
 
 
@@ -66,15 +66,26 @@ async def tg_send_code(request: SendCodeRequest):
     try:
         client = await create_client(api_id=int(final_api_id), api_hash=final_api_hash)
         
-        await client.connect()
+        if not client.is_connected():
+            await client.connect()
+            
+        # Если клиент каким-то чудом уже авторизован (например, сессия осталась на диске)
+        if await client.is_user_authorized():
+            global _tg_client
+            _tg_client = client
+            return {"status": "success", "message": "Вы уже успешно авторизованы в системе!"}
+
+        # Запрашиваем код у Telegram
         result = await client.send_code_request(request.phone)
         
-        # Запоминаем состояние
+        # Запоминаем состояние в памяти сервера
         phone_code_hashes[request.phone] = result.phone_code_hash
         user_configured_clients[request.phone] = client
         
         return {"status": "success", "message": "Код авторизации отправлен в ваше приложение Telegram"}
+        
     except Exception as e:
+        print(f"Ошибка при отправке кода Telegram: {str(e)}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 @app.post("/tg/login", tags=["Telegram Auth"])
@@ -86,23 +97,63 @@ async def tg_login(request: LoginRequest):
     if not client or not phone_code_hash:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Сначала вызовите /tg/send-code для этого номера телефона"
+            detail="Сначала вызовите /tg/send-code для этого номера телефона или время действия сессии истекло"
         )
         
     try:
-        await client.sign_in(phone=request.phone, code=request.code, phone_code_hash=phone_code_hash)
+        if not client.is_connected():
+            await client.connect()
+
+        # Импортируем ошибку Telethon для проверки на 2FA (если используешь Telethon)
+        # Если используешь Pyrogram, ошибка называется: pyrogram.errors.SessionPasswordNeeded
+        from telethon.errors import SessionPasswordNeededError
+    except ImportError:
+        SessionPasswordNeededError = None
+
+    try:
+        # Пробуем войти по коду
+        await client.sign_in(
+            phone=request.phone, 
+            code=request.code, 
+            phone_code_hash=phone_code_hash
+        )
         
-        # Делаем этот клиент основным для приложения
-        global _tg_client
-        _tg_client = client
-        
-        # Очищаем временную память сервера
-        phone_code_hashes.pop(request.phone, None)
-        user_configured_clients.pop(request.phone, None)
-        
-        return {"status": "success", "message": "Авторизация успешна! Сессия надежно сохранена в Docker-том."}
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Неверный код: {str(e)}")
+        # Проверяем, требует ли Telegram облачный пароль (2FA)
+        is_2fa_error = "password is required" in str(e) or (SessionPasswordNeededError and isinstance(e, SessionPasswordNeededError))
+        
+        if is_2fa_error:
+            if not request.password:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="На аккаунте включена двухфакторная аутентификация (2FA). Пожалуйста, повторите запрос, передав ваш облачный пароль в поле 'password'."
+                )
+            try:
+                # Если пользователь передал пароль, отправляем его в Telegram
+                await client.sign_in(password=request.password)
+            except Exception as pwd_err:
+                print(f"Ошибка ввода облачного пароля: {str(pwd_err)}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Неверный облачный пароль (2FA): {str(pwd_err)}"
+                )
+        else:
+            # Если это какая-то другая ошибка (например, неверный код)
+            print(f"Ошибка авторизации Telegram: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail=f"Неверный код или ошибка сессии: {str(e)}"
+            )
+            
+    # Если мы дошли досюда — авторизация успешна (по коду или по паролю)
+    global _tg_client
+    _tg_client = client
+    
+    # Очищаем временную память сервера
+    phone_code_hashes.pop(request.phone, None)
+    user_configured_clients.pop(request.phone, None)
+    
+    return {"status": "success", "message": "Авторизация успешна! Сессия надежно сохранена."}
 
 
 class IngestRequest(BaseModel):
@@ -152,7 +203,7 @@ async def ingest_messages(request: IngestRequest, background_tasks: BackgroundTa
         save_use_case = SaveDataUseCase(loader, repo)
         
         if request.source_type == "telegram":
-            background_tasks.add_task(save_use_case.execute, request.source_path, limit=request.limit)
+            background_tasks.add_task(save_use_case.execute, request.source_path)
         else:
             background_tasks.add_task(save_use_case.execute, request.source_path)
 
