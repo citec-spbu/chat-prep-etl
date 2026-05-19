@@ -1,11 +1,16 @@
 import streamlit as st
 import requests
 import time
+from styles import load_css
+from mock_data import EXPERIMENTS
+from api import (check_health, run_ingest, search_messages, run_experiments, get_progress, get_experiments)
+from components import render_experiments
 
 BACKEND_URL = "http://localhost:8000"
 
 st.set_page_config(page_title= "Chat Preparation ETL", layout = "wide")
 
+load_css()
 
 #язык по умолчанию
 if "lang" not in st.session_state:
@@ -104,7 +109,7 @@ t = TEXT[st.session_state.lang]
 st.title(t["title"])
 
 try:
-    health_response = requests.get(f"{BACKEND_URL}/health")
+    health_response = check_health()
 
     if health_response.status_code == 200:
         st.success("🟢 Backend Online")
@@ -146,10 +151,7 @@ with col1:
 
         try:
             with st.spinner(t["loading_data"]):
-                response = requests.post(
-                    f"{BACKEND_URL}/ingest",
-                    json=payload
-                )
+                response = run_ingest(payload)
 
             st.write(response.status_code)
             st.json(response.json())
@@ -198,10 +200,7 @@ with col2:
 
         try:
             with st.spinner(t["loading_search"]):
-                response = requests.get(
-                    f"{BACKEND_URL}/search",
-                    params=params
-                )
+                response = search_messages(params)
 
             data = response.json()
 
@@ -246,15 +245,15 @@ with col3:
             "Experiments Path"
         )
 
-        run_experiments = st.button(
+        run_experiments_btn = st.button(
             "Run Experiments"
         )
 
-        show_experiments = st.button(
+        show_experiment_btn = st.button(
             "Show Experiments"
         )
 
-    if run_experiments:
+    if run_experiments_btn:
 
         payload = {
             "experiments_path": experiments_path
@@ -263,10 +262,7 @@ with col3:
         try:
             with st.spinner("Running experiments..."):
 
-                response = requests.post(
-                    f"{BACKEND_URL}/experiments/run",
-                    json=payload
-                )
+                response = run_experiments(payload)
 
             data = response.json()
 
@@ -279,9 +275,7 @@ with col3:
 
                 while True:
 
-                    progress_response = requests.get(
-                        f"{BACKEND_URL}/experiments/progress"
-                    )
+                    progress_response = get_progress()
 
                     progress_data = progress_response.json()
 
@@ -312,132 +306,7 @@ with col3:
             st.error(str(e))
     
 
-    if show_experiments:
-
-        data = [
-            {
-                "id": "exp_1",
-                "name": "Raw Experiment",
-                "questions": [
-                    {
-                        "id": "q1",
-                        "text": "Какой размер алиментов?",
-                        "ground_true": "39 600 рублей"
-                    },
-                    {
-                        "id": "q2",
-                        "text": "Когда была последняя выплата?",
-                        "ground_true": "15 марта 2025"
-                    }
-                ],
-                "answers": [
-                    {
-                        "id": "q1",
-                        "text": "39 600 рублей в месяц"
-                    },
-                    {
-                        "id": "q2",
-                        "text": "Последняя выплата была 15 марта 2025"
-                    }
-                ],
-                "metrics": {
-                    "q1": {
-                        "bert_score": 0.94,
-                        "overlap": 1.0,
-                        "latency": 700
-                    },
-                    "q2": {
-                        "bert_score": 0.88,
-                        "overlap": 0.91,
-                        "latency": 820
-                    }
-                }
-            },
-            {
-                "id": "exp_2",
-                "name": "Clean Experiment",
-                "questions": [
-                    {
-                        "id": "q1",
-                        "text": "Как зовут клиента?",
-                        "ground_true": "Иван Петров"
-                    }
-                ],
-                "answers": [
-                    {
-                        "id": "q1",
-                        "text": "Клиента зовут Иван Петров"
-                    }
-                ],
-                "metrics": {
-                    "q1": {
-                        "bert_score": 0.97,
-                        "overlap": 1.0,
-                        "latency": 540
-                    }
-                }
-            }
-        ]
-
-        if not data:
-            st.warning("No experiments found")
-
-        for exp in data:
-
-            exp_name = exp.get("name", "Experiment")
-            exp_id = exp.get("id", "unknown")
-
-            with st.expander(
-                f"📋 {exp_name} ({exp_id})"
-            ):
-
-                questions = exp.get("questions", [])
-                answers = exp.get("answers", [])
-                metrics = exp.get("metrics", {})
-
-                answers_map = {
-                    a["id"]: a for a in answers
-                }
-
-                for q in questions:
-
-                    st.markdown(
-                        f"""
-                        <div class="result-box">
-                            <p style="color:#c084fc;">
-                                ❓ <b>{q.get("id", "")}</b>
-                            </p>
-                                {q.get("text", "")}
-                            </p>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-
-                    if q.get("ground_true"):
-
-                        st.success(
-                            f"🎯 {q['ground_true']}"
-                        )
-
-                    answer = answers_map.get(
-                        q.get("id")
-                    )
-
-                    if answer and answer.get("text"):
-
-                        st.info(
-                            f"🤖 {answer['text']}"
-                        )
-
-                        metric_data = metrics.get(
-                            answer["id"],
-                            {}
-                        )
-
-                        st.json(metric_data)
-
-                    else:
-                        st.warning(
-                            "No answer yet"
-                        )
+    if show_experiment_btn:
+        data = EXPERIMENTS
+        render_experiments(data)
+    
