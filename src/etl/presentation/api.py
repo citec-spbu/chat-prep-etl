@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks, status, Query
 from pydantic import BaseModel, Field
 from typing import Optional
 import os
-from src.api.factory import create_client
+from src.etl.presentation.factory import create_client
 from src.etl.adapter.repository import QdrantFastEmbedRepository
 from src.etl.usecase.get_data import GetMessageUseCase
 from src.etl.usecase.Save_Data import SaveDataUseCase
@@ -19,6 +19,18 @@ repo = QdrantFastEmbedRepository(url, api_key, collection_name)
 get_message_use_case = GetMessageUseCase(repo)
 _tg_client = None
 anonymizer = TelegramAnonymizer()
+phone_code_hashes = {}
+user_configured_clients = {}
+
+
+class SendCodeRequest(BaseModel):
+    phone: str = Field(..., description="Номер телефона (+79991112233)")
+    api_id: Optional[int] = Field(None, description="API_ID (https://my.telegram.org/auth?to=apps)")
+    api_hash: Optional[str] = Field(None, description="API HASH ")
+
+class LoginRequest(BaseModel):
+    phone: str = Field(..., description="Номер телефона")
+    code: str = Field(..., description="Код подтверждения из Телеграма")
 
 
 
@@ -32,9 +44,65 @@ async def get_active_tg_client():
         await _tg_client.connect()
     
     if not await _tg_client.is_user_authorized():
-        await _tg_client.start()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="Telegram-клиент не авторизован. Сначала выполните вход через /tg/send-code и /tg/login"
+        )
         
     return _tg_client
+
+@app.post("/tg/send-code", tags=["Telegram Auth"])
+async def tg_send_code(request: SendCodeRequest):
+    """Шаг 1: Инициализация клиента ключами разработчика и запрос СМС/кода"""
+    final_api_id = request.api_id or os.getenv("TG_API_ID")
+    final_api_hash = request.api_hash or os.getenv("TG_API_HASH")
+    
+    if not final_api_id or not final_api_hash:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Ключи API не найдены. Введите их в форму или добавьте в .env сервера."
+        )
+        
+    try:
+        client = await create_client(api_id=int(final_api_id), api_hash=final_api_hash)
+        
+        await client.connect()
+        result = await client.send_code_request(request.phone)
+        
+        # Запоминаем состояние
+        phone_code_hashes[request.phone] = result.phone_code_hash
+        user_configured_clients[request.phone] = client
+        
+        return {"status": "success", "message": "Код авторизации отправлен в ваше приложение Telegram"}
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+@app.post("/tg/login", tags=["Telegram Auth"])
+async def tg_login(request: LoginRequest):
+    """Шаг 2: Ввод кода подтверждения и сохранение постоянной сессии"""
+    client = user_configured_clients.get(request.phone)
+    phone_code_hash = phone_code_hashes.get(request.phone)
+    
+    if not client or not phone_code_hash:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Сначала вызовите /tg/send-code для этого номера телефона"
+        )
+        
+    try:
+        await client.sign_in(phone=request.phone, code=request.code, phone_code_hash=phone_code_hash)
+        
+        # Делаем этот клиент основным для приложения
+        global _tg_client
+        _tg_client = client
+        
+        # Очищаем временную память сервера
+        phone_code_hashes.pop(request.phone, None)
+        user_configured_clients.pop(request.phone, None)
+        
+        return {"status": "success", "message": "Авторизация успешна! Сессия надежно сохранена в Docker-том."}
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Неверный код: {str(e)}")
 
 
 class IngestRequest(BaseModel):
@@ -65,6 +133,8 @@ async def ingest_messages(request: IngestRequest, background_tasks: BackgroundTa
     try:
         if request.source_type == "telegram":
             client = await get_active_tg_client()
+            if not await client.is_user_authorized():
+                raise HTTPException(status_code=401, detail="Telegram-клиент не авторизован. Пройдите /tg/send-code")
             parser = TelegramParser(client, anonymizer)
             grabber = TelegramGrabber(client, parser)
             loader = TelegramLoader(grabber)
@@ -102,10 +172,10 @@ async def ingest_messages(request: IngestRequest, background_tasks: BackgroundTa
 
 
 @app.get("/search")
-async def search(query: str = Query(..., description="Твой поисковый запрос (то, что мы тестировали)"),
+async def search(query: str = Query(..., description=" Поисковый запрос "),
                  chat_id: int = Query(..., description="ID чата (например, 101)"),
                  k: int = Query(1, description="Сколько сообщений вернуть"),
-                 clean: str = Query("raw", description="Нужно ли прогнать через очистку (clear_service)")):
+                 clean: str = Query("raw", description=" Тип данных: clean/raw+clean/raw(clear_service)")):
     """
     Семантический поиск по сообщениям.
     :param query: Твой поисковый запрос (то, что мы тестировали)
@@ -152,4 +222,4 @@ async def search(query: str = Query(..., description="Твой поисковы�
 if __name__ == "__main__":
     import uvicorn
     os.makedirs("sessions", exist_ok=True)
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8067)

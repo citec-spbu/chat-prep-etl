@@ -2,10 +2,18 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent.parent.parent / ".env")
+env_path = Path(__file__).parent.parent.parent / ".env"
+if env_path.exists():
+    load_dotenv(env_path)
+else:
+    load_dotenv()
 
-url = os.getenv("QDRANT_ENDPOINT")
+url = os.getenv("QDRANT_ENDPOINT") or os.getenv("QDRANT_URL")
 api_key = os.getenv("QDRANT_API_KEY")
+
+if api_key:
+    api_key = api_key.strip()
+
 collection_name = os.getenv("QDRANT_COLLECTION_NAME", "messages")
 test_collection_name = os.getenv("QDRANT_TEST_COLLECTION_NAME", "messages_test")
 
