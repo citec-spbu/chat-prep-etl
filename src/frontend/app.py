@@ -3,10 +3,9 @@ import requests
 import time
 from styles import load_css
 from mock_data import EXPERIMENTS
-from api import (check_health, run_ingest, search_messages, run_experiments, get_progress, get_experiments)
+from api import (check_health, run_ingest, search_messages, run_experiments, get_progress, get_experiments,send_tg_code, tg_login)
 from components import render_experiments, render_search_results
 
-BACKEND_URL = "http://localhost:8000"
 
 st.set_page_config(page_title= "Chat Preparation ETL", layout = "wide")
 
@@ -120,10 +119,116 @@ try:
 except Exception:
     st.error("🔴 Backend Offline")
 
-col1, col2, col3 = st.columns(3)
+col1, col2, col3, col4 = st.columns(4)
+
+#------TG AUTH BLOCK-----
+with col1:
+    with st.container(border=True):
+
+        st.header("Telegram Login")
+
+        phone = st.text_input(
+            "Phone Number",
+            placeholder="+79999999999"
+        )
+
+        api_id = st.text_input(
+            "API ID"
+        )
+
+        api_hash = st.text_input(
+            "API HASH"
+        )
+
+        send_code_btn = st.button(
+            "Send Code"
+        )
+
+        code = st.text_input(
+            "Telegram Code"
+        )
+
+        login_btn = st.button(
+            "Login"
+        )
+    if send_code_btn:
+
+        if not phone:
+            st.warning("Введите номер телефона")
+            st.stop()
+
+        payload = {
+            "phone": phone,
+            "api_id": api_id,
+            "api_hash": api_hash
+        }
+
+        try:
+            with st.spinner("Отправка кода..."):
+
+                response = send_tg_code(payload)
+
+            data = response.json()
+
+            if response.status_code == 200:
+
+                st.success(
+                    "Код отправлен в Telegram"
+                )
+
+                st.json(data)
+
+            else:
+                st.error(
+                    f"Ошибка: {response.status_code}"
+                )
+
+                st.json(data)
+
+        except Exception as e:
+            st.error(str(e))
+    if login_btn:
+
+        if not phone:
+            st.warning("Введите номер телефона")
+            st.stop()
+
+        if not code:
+            st.warning("Введите код из Telegram")
+            st.stop()
+
+        payload = {
+            "phone": phone,
+            "code": code
+        }
+
+        try:
+            with st.spinner("Авторизация..."):
+
+                response = tg_login(payload)
+
+            data = response.json()
+
+            if response.status_code == 200:
+
+                st.success(
+                    "Telegram авторизация успешна"
+                )
+
+                st.json(data)
+
+            else:
+                st.error(
+                    f"Ошибка: {response.status_code}"
+                )
+
+                st.json(data)
+
+        except Exception as e:
+            st.error(str(e))
 
 #------POST BLOCK-----
-with col1:
+with col2:
     with st.container(border=True):
         st.header(t["upload"])
         source_type = st.selectbox(t["source_type"],
@@ -160,7 +265,7 @@ with col1:
             st.error(str(e))
 
 #-----GET BlOK-----
-with col2:
+with col3:
     with st.container(border=True):
         st.header(t["search"])
         query = st.text_input(t["question"])
@@ -218,7 +323,7 @@ with col2:
             st.error(str(e))
 
 #-----EXPERIMENTS BLOCK-----
-with col3:
+with col4:
     with st.container(border=True):
 
         st.header("Experiments")
@@ -289,6 +394,11 @@ with col3:
     
 
     if show_experiment_btn:
-        data = EXPERIMENTS
-        render_experiments(data)
+        
+        try:
+            response = get_experiments()
+            data = response.json()
+            render_experiments(data)
+        except Exception as e:
+            st.error(str(e))
     

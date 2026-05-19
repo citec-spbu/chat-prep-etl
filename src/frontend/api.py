@@ -2,11 +2,6 @@ import requests
 
 BACKEND_URL = "http://localhost:8000"
 
-import requests
-
-BACKEND_URL = "http://localhost:8000"
-
-
 def check_health():
 
     return requests.get(
