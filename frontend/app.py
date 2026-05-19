@@ -1,129 +1,10 @@
 import streamlit as st
 import requests
+import time
 
 BACKEND_URL = "http://localhost:8000"
 
 st.set_page_config(page_title= "Chat Preparation ETL", layout = "wide")
-
-st.markdown("""
-<style>
-
-/* MAIN BACKGROUND */
-
-.stApp {
-    background: linear-gradient(
-        135deg,
-        #0f172a 0%,
-        #111827 50%,
-        #1e1b4b 100%
-    );
-}
-/* CARDS */
-
-[data-testid="column"] {
-
-    background: rgba(30, 27, 75, 0.55);
-    border-radius: 28px;
-    padding: 28px;
-    border: 1px solid rgba(139, 92, 246, 0.18);
-    backdrop-filter: blur(18px);
-}
-            
-/* TITLES */
-
-h1 {
-    color: white !important;
-    font-size: 42px !important;
-    font-weight: 700 !important;
-}
-
-h2, h3 {
-    color: #c084fc !important;
-}
-/* INPUTS */
-
-.stTextInput input,
-.stNumberInput input,
-.stSelectbox div[data-baseweb="select"] {
-
-    background-color: rgba(255,255,255,0.03) !important;
-
-    border-radius: 16px !important;
-
-    border: 1px solid rgba(139,92,246,0.2) !important;
-
-    color: white !important;
-}
-/* BUTTONS */
-
-.stButton button {
-
-    width: 100%;
-
-    height: 54px;
-
-    border-radius: 18px;
-
-    border: none;
-
-    background: linear-gradient(
-        90deg,
-        #7c3aed,
-        #8b5cf6
-    );
-
-    color: white;
-
-    font-size: 17px;
-
-    font-weight: 600;
-
-    transition: 0.3s ease;
-}
-/* HOVER */
-
-.stButton button:hover {
-
-    transform: scale(1.02);
-
-    box-shadow: 0 0 24px rgba(139,92,246,0.35);
-}
-
-/* LABELS */
-
-label {
-    color: #d1d5db !important;
-}
-
-/* SUCCESS */
-
-.stSuccess {
-    border-radius: 16px;
-}
-
-/* WARNING */
-
-.stWarning {
-    border-radius: 16px;
-}
-
-/* RESULTS BLOCK */
-
-.result-box {
-
-    background: rgba(255,255,255,0.03);
-
-    border-radius: 18px;
-
-    padding: 18px;
-
-    margin-bottom: 15px;
-
-    border: 1px solid rgba(139,92,246,0.15);
-}
-
-</style>
-""", unsafe_allow_html=True)
 
 
 #язык по умолчанию
@@ -222,7 +103,19 @@ TEXT = {
 t = TEXT[st.session_state.lang]
 st.title(t["title"])
 
-col1, col2 = st.columns(2)
+try:
+    health_response = requests.get(f"{BACKEND_URL}/health")
+
+    if health_response.status_code == 200:
+        st.success("🟢 Backend Online")
+
+    else:
+        st.error("🔴 Backend Error")
+
+except Exception:
+    st.error("🔴 Backend Offline")
+
+col1, col2, col3 = st.columns(3)
 
 #------POST BLOCK-----
 with col1:
@@ -287,7 +180,7 @@ with col2:
 
         st.divider()
 
-        st.subheader("📄 Результаты поиска")
+        st.subheader("Результаты поиска")
 
             
     #Подключаю GET
@@ -342,3 +235,209 @@ with col2:
 
         except Exception as e:
             st.error(str(e))
+
+#-----EXPERIMENTS BLOCK-----
+with col3:
+    with st.container(border=True):
+
+        st.header("Experiments")
+
+        experiments_path = st.text_input(
+            "Experiments Path"
+        )
+
+        run_experiments = st.button(
+            "Run Experiments"
+        )
+
+        show_experiments = st.button(
+            "Show Experiments"
+        )
+
+    if run_experiments:
+
+        payload = {
+            "experiments_path": experiments_path
+        }
+
+        try:
+            with st.spinner("Running experiments..."):
+
+                response = requests.post(
+                    f"{BACKEND_URL}/experiments/run",
+                    json=payload
+                )
+
+            data = response.json()
+
+            if response.status_code == 202:
+
+                st.success("Experiments started")
+
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+
+                while True:
+
+                    progress_response = requests.get(
+                        f"{BACKEND_URL}/experiments/progress"
+                    )
+
+                    progress_data = progress_response.json()
+
+                    total = progress_data.get("total", 0)
+                    completed = progress_data.get("completed", 0)
+
+                    if total > 0:
+
+                        progress_value = completed / total
+
+                        progress_bar.progress(progress_value)
+
+                        status_text.info(
+                            f"Completed: {completed} / {total}"
+                        )
+
+                    if completed >= total and total > 0:
+                        break
+
+                    time.sleep(1)
+
+            else:
+                st.error(f"Error: {response.status_code}")
+
+                st.json(data)
+
+        except Exception as e:
+            st.error(str(e))
+    
+
+    if show_experiments:
+
+        data = [
+            {
+                "id": "exp_1",
+                "name": "Raw Experiment",
+                "questions": [
+                    {
+                        "id": "q1",
+                        "text": "Какой размер алиментов?",
+                        "ground_true": "39 600 рублей"
+                    },
+                    {
+                        "id": "q2",
+                        "text": "Когда была последняя выплата?",
+                        "ground_true": "15 марта 2025"
+                    }
+                ],
+                "answers": [
+                    {
+                        "id": "q1",
+                        "text": "39 600 рублей в месяц"
+                    },
+                    {
+                        "id": "q2",
+                        "text": "Последняя выплата была 15 марта 2025"
+                    }
+                ],
+                "metrics": {
+                    "q1": {
+                        "bert_score": 0.94,
+                        "overlap": 1.0,
+                        "latency": 700
+                    },
+                    "q2": {
+                        "bert_score": 0.88,
+                        "overlap": 0.91,
+                        "latency": 820
+                    }
+                }
+            },
+            {
+                "id": "exp_2",
+                "name": "Clean Experiment",
+                "questions": [
+                    {
+                        "id": "q1",
+                        "text": "Как зовут клиента?",
+                        "ground_true": "Иван Петров"
+                    }
+                ],
+                "answers": [
+                    {
+                        "id": "q1",
+                        "text": "Клиента зовут Иван Петров"
+                    }
+                ],
+                "metrics": {
+                    "q1": {
+                        "bert_score": 0.97,
+                        "overlap": 1.0,
+                        "latency": 540
+                    }
+                }
+            }
+        ]
+
+        if not data:
+            st.warning("No experiments found")
+
+        for exp in data:
+
+            exp_name = exp.get("name", "Experiment")
+            exp_id = exp.get("id", "unknown")
+
+            with st.expander(
+                f"📋 {exp_name} ({exp_id})"
+            ):
+
+                questions = exp.get("questions", [])
+                answers = exp.get("answers", [])
+                metrics = exp.get("metrics", {})
+
+                answers_map = {
+                    a["id"]: a for a in answers
+                }
+
+                for q in questions:
+
+                    st.markdown(
+                        f"""
+                        <div class="result-box">
+                            <p style="color:#c084fc;">
+                                ❓ <b>{q.get("id", "")}</b>
+                            </p>
+                                {q.get("text", "")}
+                            </p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
+                    if q.get("ground_true"):
+
+                        st.success(
+                            f"🎯 {q['ground_true']}"
+                        )
+
+                    answer = answers_map.get(
+                        q.get("id")
+                    )
+
+                    if answer and answer.get("text"):
+
+                        st.info(
+                            f"🤖 {answer['text']}"
+                        )
+
+                        metric_data = metrics.get(
+                            answer["id"],
+                            {}
+                        )
+
+                        st.json(metric_data)
+
+                    else:
+                        st.warning(
+                            "No answer yet"
+                        )
