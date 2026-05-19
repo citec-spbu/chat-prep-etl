@@ -4,7 +4,7 @@ import time
 from styles import load_css
 from mock_data import EXPERIMENTS
 from api import (check_health, run_ingest, search_messages, run_experiments, get_progress, get_experiments)
-from components import render_experiments
+from components import render_experiments, render_search_results
 
 BACKEND_URL = "http://localhost:8000"
 
@@ -208,25 +208,7 @@ with col2:
 
                 results = data.get("results", [])
 
-                if not results:
-                    st.warning(t["nothing_found"])
-
-                else:
-                    st.success(f"{t['results_found']}: {len(results)}")
-
-                    for i, result in enumerate(results, start=1):
-
-                        st.subheader(f"{t['result']} {i}")
-
-                        st.markdown(
-                            f'''
-                            <div class="result-box">
-                                <h4 style="color:#c084fc;">{t["result"]} {i}</h4>
-                                <p style="color:white;">{result}</p>
-                            </div>
-                            ''',
-                            unsafe_allow_html=True
-                        )
+                render_search_results(results, t)
 
             else:
                 st.error(f"{t['error']}: {response.status_code}")

@@ -9,7 +9,7 @@ def render_experiments(data):
         exp_id = exp.get("id", "unknown")
 
         with st.expander(
-            f"📋 {exp_name} ({exp_id})"
+            f" {exp_name} ({exp_id})"
         ):
 
             questions = exp.get("questions", [])
@@ -26,7 +26,7 @@ def render_experiments(data):
                     f"""
                     <div class="result-box">
                         <p style="color:#c084fc;">
-                            ❓ <b>{q.get("id", "")}</b>
+                             <b>{q.get("id", "")}</b>
                         </p>
 
                         <p style="color:white;">
@@ -40,7 +40,7 @@ def render_experiments(data):
                 if q.get("ground_true"):
 
                     st.success(
-                        f"🎯 {q['ground_true']}"
+                        f" {q['ground_true']}"
                     )
 
                 answer = answers_map.get(
@@ -50,7 +50,7 @@ def render_experiments(data):
                 if answer and answer.get("text"):
 
                     st.info(
-                        f"🤖 {answer['text']}"
+                        f" {answer['text']}"
                     )
 
                     metric_data = metrics.get(
@@ -64,3 +64,38 @@ def render_experiments(data):
                     st.warning(
                         "No answer yet"
                     )
+
+def render_search_results(results, t):
+
+    if not results:
+
+        st.warning(
+            t["nothing_found"]
+        )
+
+    else:
+
+        st.success(
+            f"{t['results_found']}: {len(results)}"
+        )
+
+        for i, result in enumerate(results, start=1):
+
+            st.subheader(
+                f"{t['result']} {i}"
+            )
+
+            st.markdown(
+                f'''
+                <div class="result-box">
+                    <h4 style="color:#c084fc;">
+                        {t["result"]} {i}
+                    </h4>
+
+                    <p>
+                        {result}
+                    </p>
+                </div>
+                ''',
+                unsafe_allow_html=True
+            )
