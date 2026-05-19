@@ -1,6 +1,7 @@
 import json
 from collections import defaultdict
 from pathlib import Path
+import pandas as pd
 
 
 def aggregate_experiment_metrics(folder1_name, folder2_name):
@@ -75,9 +76,60 @@ def aggregate_experiment_metrics(folder1_name, folder2_name):
                 print(f"  {m_type}: {avg:.4f}")
         print()
 
+    rows = []
+    for combo, metrics_dict in stats.items():
+        model, prompt, purity = combo
+
+        row_data = {
+            'Модель': model,
+            'Промпт': prompt,
+            'Данные': purity
+        }
+
+        # Считаем среднее для каждой метрики в этой комбинации
+        for m_type, values in metrics_dict.items():
+            if values['count'] > 0:
+                row_data[m_type] = round(values['sum'] / values['count'], 4)
+            else:
+                row_data[m_type] = None
+
+        rows.append(row_data)
+
+    df = pd.DataFrame(rows)
+    fixed_cols = ['Модель', 'Промпт', 'Данные']
+    metric_cols = sorted([col for col in df.columns if col not in fixed_cols])
+    df = df[fixed_cols + metric_cols]
+    df = df.sort_values(by=fixed_cols).reset_index(drop=True)
+    return df
+
 
 if __name__ == "__main__":
     FOLDER_1 = r"Ollama"
     FOLDER_2 = r"GPT"
 
-    aggregate_experiment_metrics(FOLDER_1, FOLDER_2)
+    df = aggregate_experiment_metrics(FOLDER_1, FOLDER_2)
+
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.width', 1000)
+    print(df)
+
+
+# анализ работы rag:
+# в среднем система действительно извлекает близкие к запросу пользователя сообщения,
+# но ответ на пользовательский запрос содержится в этих данных лишь процентов на 30%.
+# Проблема видится в очень большем размере тестовой переписки и ее однотипности
+# (обсуждаются различные проблемы пользователей с tesla)
+# проблемы и потенциальные улучшения:
+# - эмбеддинг модель в значительной мере "цепляется" за общие слова (машина, проблема, карты, ошибка).
+# Можно попробовать игнорировать слова с низким idf (как считать?)
+# - вероятно, более сильная эмбеддинг модель будет лучше кодировать семантику сообщений.
+# Текущая sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2,
+# переводящая сообщения в векторы размера 384 не справляется с поставленной задачей,
+# модель c большей размерностью выходных векторов будет лучше улавливать контекст
+# - можно варьировать параметр k, отвечающий за количество извлекаемых из базы сообщений,
+# так как, чем выше k, тем больше контекст у отвечающей llm
+#
+# анализ работы llm:
+# В силу того, что ответы ассистента прямо зависят от качества извлеченных из базы данных сообщений,
+# качество ответов llm также не высоко. Тем не менее, при анализе проведенных экспериментов видно,
+# что модель корректно использует переданные ей данные.
