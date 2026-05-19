@@ -69,8 +69,8 @@ services:
       - QDRANT_URL=http://qdrant:6333
       - QDRANT_API_KEY=bee
       - QDRANT_COLLECTION_NAME=messages
-      - TG_API_ID=${TG_API_ID}
-      - TG_API_HASH=${TG_API_HASH}
+      - TG_API_ID=34395921
+      - TG_API_HASH=a86566d239b6d15c97b57d48637b27be
       - TG_PROXY_ADDR=host.docker.internal
       - TG_PROXY_PORT=10808
       - TG_PROXY_TYPE=socks5

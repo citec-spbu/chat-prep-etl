@@ -1,5 +1,5 @@
 # ЭТАП 1: Сборка окружения через Pixi
-FROM ghcr.io/prefix-dev/pixi:0.41.1-noble AS build
+FROM ghcr.io/prefix-dev/pixi:latest AS build
 
 WORKDIR /app
 COPY pixi.toml pixi.loc[k] ./
