@@ -50,3 +50,16 @@ def get_experiments():
     return requests.get(
         f"{BACKEND_URL}/experiments"
     )
+
+def send_tg_code(payload):
+    return requests.post(
+        f"{BACKEND_URL}/tg/send-code",
+        json=payload
+    )
+
+
+def tg_login(payload):
+    return requests.post(
+        f"{BACKEND_URL}/tg/login",
+        json=payload
+    )
