@@ -1,23 +1,42 @@
-# Dockerfile
-FROM prefixdev/pixi:latest AS runner
+# ЭТАП 1: Сборка окружения через Pixi
+FROM ghcr.io/prefix-dev/pixi:0.41.1-noble AS build
 
-# Устанавливаем рабочую директорию внутри контейнера
+WORKDIR /app
+COPY pixi.toml pixi.loc[k] ./
+COPY conda_pypi_mapping.json ./
+
+# Устанавливаем зависимости строго для etl-env
+RUN pixi install --environment etl-env
+
+# Генерируем скрипт активации окружения СТРОГО в /app/shell-hook.sh
+RUN pixi shell-hook --environment etl-env > /app/shell-hook.sh
+RUN echo 'exec "$@"' >> /app/shell-hook.sh
+
+
+# ЭТАП 2: Легковесный финальный образ для запуска
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates bash \
+ && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# Копируем файлы конфигурации окружения для Pixi
-COPY pixi.toml pixi.lock ./
+# Переносим готовое окружение и скрипт активации из папки /app первого этапа
+COPY --from=build /app/.pixi/envs/etl-env /app/.pixi/envs/etl-env
+COPY --from=build /app/shell-hook.sh /app/shell-hook.sh
 
-# Производим установку зависимостей (создаем etl-env окружение)
-RUN pixi install --environment etl-env --frozen
+# Делаем скрипт исполняемым на всякий случай
+RUN chmod +x /app/shell-hook.sh
 
-# Копируем исходный код нашего ETL (перенесенного в presentation)
-COPY src/etl/ ./src/etl/
+# Копируем исходный код приложения
+COPY src/etl/ /app/src/etl/
 
-# Создаем папки для логов, сессий Телеграма и временных zip-архивов
-RUN mkdir -p logs sessions temp_extracted
+# Создаем нужные папки для сессий и логов (включая test_servise из прошлой ошибки)
+RUN mkdir -p logs sessions temp_extracted test_servise
 
-# Открываем порт, на котором будет крутиться FastAPI
 EXPOSE 8067
 
-# Запускаем наш сервис через pixi в нужном окружении
-CMD ["pixi", "run", "python", "-m", "src.etl.presentation.api"]
+# Точка входа: теперь путь железно указывает на /app/shell-hook.sh
+ENTRYPOINT ["/bin/bash", "/app/shell-hook.sh"]
+CMD ["python", "-m", "src.etl.presentation.api"]

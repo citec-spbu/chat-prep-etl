@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks, status, Query
 from pydantic import BaseModel, Field
 from typing import Optional
 import os
-from src.api.factory import create_client
+from src.etl.presentation.factory import create_client
 from src.etl.adapter.repository import QdrantFastEmbedRepository
 from src.etl.usecase.get_data import GetMessageUseCase
 from src.etl.usecase.Save_Data import SaveDataUseCase
@@ -222,4 +222,4 @@ async def search(query: str = Query(..., description=" Поисковый зап
 if __name__ == "__main__":
     import uvicorn
     os.makedirs("sessions", exist_ok=True)
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8067)

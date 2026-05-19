@@ -54,7 +54,7 @@ services:
   etl-service:
     build:
       context: .
-      dockerfile: Dockerfile.etl
+      dockerfile: ./docker/Dockerfile.etl
     container_name: chat-prep-etl-service
     ports:
       - "8067:8067"
@@ -66,15 +66,14 @@ services:
       - ./zipdata:/app/zipdata 
     environment:
       # Подтягиваем всё из файла .env
-      - QDRANT_URL=${QDRANT_URL}
-      - QDRANT_API_KEY=${QDRANT_API_KEY}
-      - QDRANT_COLLECTION_NAME=${QDRANT_COLLECTION_NAME}
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_API_KEY=bee
+      - QDRANT_COLLECTION_NAME=messages
       - TG_API_ID=${TG_API_ID}
       - TG_API_HASH=${TG_API_HASH}
-      - TG_SESSION_PATH=${TG_SESSION_PATH}
-      - TG_PROXY_ADDR=${TG_PROXY_ADDR}
-      - TG_PROXY_PORT=${TG_PROXY_PORT}
-      - TG_PROXY_TYPE=${TG_PROXY_TYPE}
+      - TG_PROXY_ADDR=host.docker.internal
+      - TG_PROXY_PORT=10808
+      - TG_PROXY_TYPE=socks5
       # Переменные для Telegram (подтянутся из твоего .env файла на хосте)
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -92,7 +91,8 @@ services:
       - "6334:6334"
     volumes:
       # Сохраняем базу данных на жестком диске хоста, чтобы данные не пропадали
-      - ./qdrant_storage:/qdrant/storage
+      - ./qdrant_storage:/qdrant/storage:z
+      - ./zipdata:/app/data
     networks:
       - chat-network
 
