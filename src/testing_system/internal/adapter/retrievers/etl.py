@@ -1,7 +1,11 @@
+import logging
+
 from testing_system.internal.domain.interfaces import IRetriever
 from testing_system.internal.domain.value_objects import RetrievedDocument, \
 RetrievalRequest, RetrievalResponse
 import requests
+
+logger = logging.getLogger(__name__)
 
 class EtlRetriever(IRetriever):
     def __init__(self, url : str, chat_id: str, k: int, clean: str):
@@ -18,10 +22,12 @@ class EtlRetriever(IRetriever):
             "clean": self.clean
         }
         response = requests.get(f"{self.ETL_SERVICE_URL}/search", params=params)
+        logger.info("retriever: responce recieved")
         response.raise_for_status()
+
         data = response.json()
         documents = []
-        for d in data:
+        for d in data["results"]:
              document = RetrievedDocument(
                   id=f'{d["chat_id"]}:{d["sender_id"]}',
                   content=d["text"],

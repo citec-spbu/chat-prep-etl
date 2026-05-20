@@ -71,8 +71,8 @@ class Orchestrator:
             logger.info(f"Orchestrator: Experiment clean '{experiment.id}:{experiment.name}' is complete in {experiment.finished_at}")
             self.progress["completed"] += 1
 
-    def show_experiments(self):
-        return self.registry.select()
+    def show_experiments(self, latest: int = None):
+        return self.registry.select(latest=latest)
 
     def _choose_assistant(self, cfg: dict) -> IAssistant:
         if cfg["type"] == "ollama":
