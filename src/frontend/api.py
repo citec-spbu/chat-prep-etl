@@ -43,11 +43,14 @@ def get_progress():
     )
 
 
-def get_experiments():
+def get_experiments(k: int = None):
 
-    return requests.get(
-        f"{BACKEND_URL_2}/experiments"
-    )
+    url = f"{BACKEND_URL_2}/experiments"
+    
+    if k is not None:
+        return requests.get(url, params={"k": k})
+    else:
+        return requests.get(url)
 
 def send_tg_code(payload):
     return requests.post(
