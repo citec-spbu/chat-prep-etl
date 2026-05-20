@@ -406,10 +406,7 @@ else:
             st.subheader(t["experiments_results"])
             
             if run_experiments_btn:
-                if not experiments_path:
-                    st.warning(t["no_experiments_path"])
-                else:
-                    payload = {"experiments_path": experiments_path}
+                    payload = {"experiments_path": None}
                     try:
                         with st.spinner(t["running_experiments"]):
                             response = run_experiments(payload)
@@ -445,9 +442,6 @@ else:
                         st.error(str(e))
             
             if show_experiment_btn:
-                if not experiments_path:
-                    st.warning(t["no_experiments_path"])
-                else:
                     try:
                         with st.spinner(t["loading_experiments"]):
                             response = get_experiments(k=experiments_count)
