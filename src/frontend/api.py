@@ -1,18 +1,21 @@
 import requests
 
-BACKEND_URL = "http://localhost:8000"
+BACKEND_URL_1 = "http://100.76.31.66:8067" #Эдика
+BACKEND_URL_2 = "http://100.106.4.6:8881" 
+
+
 
 def check_health():
 
     return requests.get(
-        f"{BACKEND_URL}/health"
+        f"{BACKEND_URL_2}/health"
     )
 
 
 def run_ingest(payload):
 
     return requests.post(
-        f"{BACKEND_URL}/ingest",
+        f"{BACKEND_URL_1}/ingest",
         json=payload
     )
 
@@ -20,7 +23,7 @@ def run_ingest(payload):
 def search_messages(params):
 
     return requests.get(
-        f"{BACKEND_URL}/search",
+        f"{BACKEND_URL_1}/search",
         params=params
     )
 
@@ -28,7 +31,7 @@ def search_messages(params):
 def run_experiments(payload):
 
     return requests.post(
-        f"{BACKEND_URL}/experiments/run",
+        f"{BACKEND_URL_2}/experiments/run",
         json=payload
     )
 
@@ -36,25 +39,28 @@ def run_experiments(payload):
 def get_progress():
 
     return requests.get(
-        f"{BACKEND_URL}/experiments/progress"
+        f"{BACKEND_URL_2}/experiments/progress"
     )
 
 
-def get_experiments():
+def get_experiments(k: int = None):
 
-    return requests.get(
-        f"{BACKEND_URL}/experiments"
-    )
+    url = f"{BACKEND_URL_2}/experiments"
+    
+    if k is not None:
+        return requests.get(url, params={"k": k})
+    else:
+        return requests.get(url)
 
 def send_tg_code(payload):
     return requests.post(
-        f"{BACKEND_URL}/tg/send-code",
+        f"{BACKEND_URL_1}/tg/send-code",
         json=payload
     )
 
 
 def tg_login(payload):
     return requests.post(
-        f"{BACKEND_URL}/tg/login",
+        f"{BACKEND_URL_1}/tg/login",
         json=payload
     )
