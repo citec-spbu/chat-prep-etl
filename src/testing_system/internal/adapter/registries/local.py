@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 import logging
 import os
@@ -47,8 +48,8 @@ class LocalRegistry(IRegistry):
     def select(self, latest: Optional[int] = None) -> List[Experiment]:
         exps = sorted(
             self._experiments.values(),
-            key=lambda e: e.name,
-            reverse=False,
+            key=lambda e: datetime.fromisoformat(e.started_at) if isinstance(e.started_at, str) else e.started_at,
+            reverse=True,
         )
         if latest is not None:
             exps = exps[:min(latest, len(exps))]

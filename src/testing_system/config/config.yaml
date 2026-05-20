@@ -10,7 +10,7 @@ testing_system:
     hallucination_model: "cointegrated/rubert-base-cased-nli-threeway"
 
   assistants:
-    type: ollama 
+    type: cloud 
     ollama:
       host: "ollama"
       port: 11434
@@ -24,7 +24,7 @@ testing_system:
     type: etl_service
     etl_service:
       chat_id: 0
-      k: 15
+      k: 40
       host: 100.76.31.66
       port: 8067
 
