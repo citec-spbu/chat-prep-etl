@@ -42,6 +42,7 @@ class Runner:
         return
 
     def _run_process(self, q: Question) -> Answer:
+        logger.info(f"Runner: processor execution started")
         response = self.processor.execute(
             question = q.text, 
             system_prompt = q.metadata.get("system_prompt", None),
@@ -66,9 +67,10 @@ class Runner:
             try:
                 loop = asyncio.get_running_loop()
                 processed = await loop.run_in_executor(executor, self._run_process, query)
+                logger.info(f"Runner: Process execed for exp {query.id}, evaluating...")
                 await self.eval_queue.put((query,processed))
             except Exception as e:
-                logger.error(f"Processor: Process failed for exp {query.id}: {e}")
+                logger.error(f"Runner: Process failed for exp {query.id}: {e}")
             finally:
                 self.process_queue.task_done()
     
@@ -78,10 +80,10 @@ class Runner:
             try:
                 loop = asyncio.get_running_loop()
                 evaluated = await loop.run_in_executor(executor, self._run_eval, q, a)
-                logger.info(f"Processor: Query {q.id} completed")
+                logger.info(f"Runner: Query {q.id} completed")
                 self.experiment.add(a,evaluated)
             except Exception as e:
-                logger.error(f"Processor: Eval failed for query {q.id}: {e}")
+                logger.error(f"Runner: Eval failed for query {q.id}: {e}")
             finally:
                 self.eval_queue.task_done()
 
@@ -107,9 +109,10 @@ class Runner:
             "registry":str(type(self.registry)),
             "clean":self.processor.retriever.clean
         }
+        logger.info(f"Runner: config for {experiment.id} is loaded")
         experiment_from_registry = self._exist(experiment=experiment)
         if experiment_from_registry != None:
-            logger.info(f"Processor: found {experiment_from_registry.id} Experiment in registry")
+            logger.info(f"Runner: found {experiment_from_registry.id} Experiment in registry")
             return experiment_from_registry
         self.experiment = experiment
 

@@ -2,6 +2,9 @@ import logging
 import re
 from typing import List
 import numpy as np
+import nltk
+nltk.download('stopwords')
+
 
 from testing_system.internal.domain.entities import MetricValue, Question, Answer, MetricType
 from testing_system.internal.domain.value_objects import RetrievedDocument

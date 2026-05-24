@@ -19,6 +19,8 @@ services:
       - RESULTS_PATH=/testing_system/experiment_results
       - PROMPTS_PATH=/testing_system/prompts
       - DEEPEVAL_CACHE_DIR=/tmp/.deepeval
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - HF_TOKEN=${HF_TOKEN}
       # Версия CUDA, если нужна
       - NVIDIA_VISIBLE_DEVICES=all
     deploy:
@@ -28,6 +30,8 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+    networks:
+      - chat-network
     user: "1000:1000"   # принудительно, если внутри образ уже app (uid 1000)
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8881/health"]
@@ -41,7 +45,7 @@ services:
     ports:
       - "11434:11434"
     volumes:
-      - ollama_data:/root/.ollama
+      - /.ollama:/root/.ollama
     deploy:
       resources:
         reservations:
@@ -49,6 +53,8 @@ services:
             - driver: nvidia
               count: all # Use '1' to limit to a single GPU
               capabilities: [gpu]
+    networks:
+      - chat-network
     restart: unless-stopped
 
   etl-service:

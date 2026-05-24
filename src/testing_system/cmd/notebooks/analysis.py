@@ -59,22 +59,16 @@ def aggregate_experiment_metrics(folder1_name, folder2_name):
                             clean_m_type = m_type.replace('MetricType.', '')
                             stats[combination_key][clean_m_type]['sum'] += m_value
                             stats[combination_key][clean_m_type]['count'] += 1
-
-    print("=== Средние значения метрик по 8 комбинациям ===\n")
-
     # Вывод результатов
     for combo in sorted(stats.keys()):
         model, prompt, purity = combo
-        print(f"Модель: {model} | Промпт: {prompt} | Данные: {purity}")
-        print("-" * 50)
-
         metric_data = stats[combo]
         for m_type in sorted(metric_data.keys()):
             values = metric_data[m_type]
             if values['count'] > 0:
                 avg = values['sum'] / values['count']
-                print(f"  {m_type}: {avg:.4f}")
-        print()
+
+
 
     rows = []
     for combo, metrics_dict in stats.items():
