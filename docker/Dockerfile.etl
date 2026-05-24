@@ -13,11 +13,13 @@ RUN pixi shell-hook --environment etl-env > /app/shell-hook.sh
 RUN echo 'exec "$@"' >> /app/shell-hook.sh
 
 
-# ЭТАП 2: Легковесный финальный образ для запуска
-FROM python:3.11-slim
+# ЭТАП 2: УЛЬТРАЛЕГКИЙ финальный образ
+FROM ubuntu:22.04
 
+# Устанавливаем только самый минимум для работы системных скриптов
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates bash \
+    ca-certificates \
+    bash \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -39,4 +41,4 @@ EXPOSE 8067
 
 # Точка входа: теперь путь железно указывает на /app/shell-hook.sh
 ENTRYPOINT ["/bin/bash", "/app/shell-hook.sh"]
-CMD ["python", "-m", "src.etl.presentation.api"]
+CMD ["python", "-m", "src.etl.adapter.repository_test"]

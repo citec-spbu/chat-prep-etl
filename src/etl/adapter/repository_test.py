@@ -3,6 +3,7 @@ import time
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 
+from src.etl.adapter.s import extra_messages
 from src.etl.dbconfig import url, api_key, collection_name, test_collection_name
 from src.etl.adapter.repository import QdrantFastEmbedRepository
 from src.etl.domain.value_objects import MessageMetadata
@@ -21,7 +22,7 @@ async def test():
     client.create_collection(
         collection_name=COLLECTION_NAME,
         vectors_config=models.VectorParams(
-            size=384,
+            size=768,
             distance=models.Distance.COSINE
         ),
         on_disk_payload=True
@@ -29,61 +30,11 @@ async def test():
     client.create_payload_index(
         collection_name=COLLECTION_NAME,
         field_name="chat_id",
-        field_schema=models.PayloadSchemaType.INTEGER,
+        field_schema=models.PayloadSchemaType.KEYWORD,
     )
 
     repo = QdrantFastEmbedRepository(URL, API_KEY, COLLECTION_NAME)
 
-    extra_messages = [
-        # Чат 101 - Техническая поддержка (RU/EN)
-        MessageMetadata(sender_id=1, chat_id=101,
-                        text="Как сбросить пароль от учетной записи?", attached_files=[]),
-        MessageMetadata(sender_id=2, chat_id=101, text="The server is down since 2 AM",
-                        attached_files=["logs.txt"]),
-        MessageMetadata(sender_id=1, chat_id=101, text="Где найти документацию по API?",
-                        attached_files=[]),
-        MessageMetadata(sender_id=3, chat_id=101, text="I need help with my subscription",
-                        attached_files=[]),
-        MessageMetadata(sender_id=2, chat_id=101,
-                        text="Ошибка 404 при входе в личный кабинет", attached_files=[]),
-        MessageMetadata(sender_id=1, chat_id=101, text="Is there a Python SDK available?",
-                        attached_files=[]),
-        MessageMetadata(sender_id=4, chat_id=101,
-                        text="Плановое обслуживание начнется в полночь",
-                        attached_files=[]),
-        MessageMetadata(sender_id=2, chat_id=101, text="Can you increase my storage limit?",
-                        attached_files=[]),
-        MessageMetadata(sender_id=1, chat_id=101, text="Спасибо, проблема решена!",
-                        attached_files=[]),
-        MessageMetadata(sender_id=3, chat_id=101,
-                        text="How to enable two-factor authentication?",
-                        attached_files=[]),
-
-        # Чат 505 - Обсуждение проекта (RU/EN)
-        MessageMetadata(sender_id=10, chat_id=505,
-                        text="Нужно обновить дизайн главной страницы",
-                        attached_files=["design.fig"]),
-        MessageMetadata(sender_id=11, chat_id=505,
-                        text="Meeting scheduled for tomorrow at 10 AM",
-                        attached_files=[]),
-        MessageMetadata(sender_id=10, chat_id=505, text="Согласовали бюджет на маркетинг",
-                        attached_files=[]),
-        MessageMetadata(sender_id=12, chat_id=505,
-                        text="Who is responsible for the database?", attached_files=[]),
-        MessageMetadata(sender_id=11, chat_id=505, text="Подготовил отчет за прошлый месяц",
-                        attached_files=["report.pdf"]),
-        MessageMetadata(sender_id=10, chat_id=505, text="Let's use React for the frontend",
-                        attached_files=[]),
-        MessageMetadata(sender_id=12, chat_id=505,
-                        text="Нам нужен новый тестировщик в команду", attached_files=[]),
-        MessageMetadata(sender_id=11, chat_id=505, text="I will finish the task by Friday",
-                        attached_files=[]),
-        MessageMetadata(sender_id=10, chat_id=505,
-                        text="Добавил новые иконки в репозиторий", attached_files=[]),
-        MessageMetadata(sender_id=12, chat_id=505,
-                        text="Does anyone have the link to the dev server?",
-                        attached_files=[])
-    ]
     start = time.perf_counter()
     await repo.save_batch(extra_messages)
     end = time.perf_counter()
