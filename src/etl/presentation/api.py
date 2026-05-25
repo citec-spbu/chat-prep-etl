@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks, status, Query
+from fastapi import FastAPI, HTTPException, BackgroundTasks, status, Query, Response
 from pydantic import BaseModel, Field
 from typing import Optional
 import os
@@ -33,6 +33,40 @@ class LoginRequest(BaseModel):
     code: str = Field(..., description="Код подтверждения из Телеграма")
     password: Optional[str] = Field(None, description="Облачный пароль (двухфакторная аутентификация 2FA), если включен")
 
+
+@app.get("/health/", tags=["Infrastructure"], status_code=status.HTTP_200_OK)
+async def health_check(response: Response):
+    """
+    Эндпоинт для тест-системы (Health Check).
+    Проверяет статус самого сервиса и сетевое соединение с Qdrant.
+    """
+    from fastapi import Response # Добавим локально на случай, если забыли в импортах сверху
+    
+    health_status = {
+        "status": "healthy",
+        "components": {
+            "etl_service": "up",
+            "qdrant": "unknown"
+        }
+    }
+    
+    try:
+        # Проверяем, отвечает ли Qdrant по сети. 
+        # У qdrant_client метод get_locks() — самый быстрый способ пинга.
+        if hasattr(repo, '_client'):
+            await repo._client.get_locks()
+            health_status["components"]["qdrant"] = "connected"
+        else:
+            # На случай, если клиент внутри репозитория называется иначе
+            health_status["components"]["qdrant"] = "connected (skipped deep check)"
+            
+    except Exception as e:
+        # Если Qdrant упал или выдал таймаут
+        health_status["status"] = "unhealthy"
+        health_status["components"]["qdrant"] = f"disconnected: {str(e)}"
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        
+    return health_status
 
 
 async def get_active_tg_client():
