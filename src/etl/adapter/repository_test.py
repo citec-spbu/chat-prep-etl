@@ -8,8 +8,9 @@ from src.etl.dbconfig import url, api_key, collection_name, test_collection_name
 from src.etl.adapter.repository import QdrantFastEmbedRepository
 from src.etl.domain.value_objects import MessageMetadata
 
-
 async def test():
+    print("Начало тестирования")
+
     URL = url
     API_KEY = api_key
     COLLECTION_NAME = test_collection_name
@@ -34,6 +35,7 @@ async def test():
     )
 
     repo = QdrantFastEmbedRepository(URL, API_KEY, COLLECTION_NAME)
+    print("Инициализация репозитория завершена")
 
     start = time.perf_counter()
     await repo.save_batch(extra_messages)
