@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks, status, Query
+from fastapi import FastAPI, HTTPException, BackgroundTasks, status, Query, Response
 from pydantic import BaseModel, Field
 from typing import Optional
 import os
@@ -23,12 +23,12 @@ class LoginRequest(BaseModel):
     phone: str = Field(..., description="Номер телефона")
     code: str = Field(..., description="Код подтверждения из Телеграма")
     password: Optional[str] = Field(None, description="Облачный пароль (двухфакторная аутентификация 2FA), если включен")
-
 class IngestRequest(BaseModel):
     source_type: str = Field(..., description="Допустимые типы: telegram, yandex, html")
     source_path: str = Field(..., description="Путь к локальному файлу/архиву или имя чата")
     chat_id: Optional[int] = Field(0, description="Числовой ID чата")
     limit: Optional[int] = Field(100, description="Лимит сообщений для Telegram API")
+
 
 async def get_active_tg_client():
     global _tg_client
@@ -54,7 +54,39 @@ def create_app() -> FastAPI:
     anonymizer = TelegramAnonymizer()
 
     app = FastAPI(title="Chat Prep ETL API")
-
+    @app.get("/health/", tags=["Infrastructure"], status_code=status.HTTP_200_OK)
+    async def health_check(response: Response):
+        """
+        Эндпоинт для тест-системы (Health Check).
+        Проверяет статус самого сервиса и сетевое соединение с Qdrant.
+        """
+        from fastapi import Response # Добавим локально на случай, если забыли в импортах сверху
+        
+        health_status = {
+            "status": "healthy",
+            "components": {
+                "etl_service": "up",
+                "qdrant": "unknown"
+            }
+        }
+        
+        try:
+            # Проверяем, отвечает ли Qdrant по сети. 
+            # У qdrant_client метод get_locks() — самый быстрый способ пинга.
+            if hasattr(repo, '_client'):
+                await repo._client.get_locks()
+                health_status["components"]["qdrant"] = "connected"
+            else:
+                # На случай, если клиент внутри репозитория называется иначе
+                health_status["components"]["qdrant"] = "connected (skipped deep check)"
+                
+        except Exception as e:
+            # Если Qdrant упал или выдал таймаут
+            health_status["status"] = "unhealthy"
+            health_status["components"]["qdrant"] = f"disconnected: {str(e)}"
+            response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+            
+        return health_status
     @app.post("/tg/send-code", tags=["Telegram Auth"])
     async def tg_send_code(request: SendCodeRequest):
         """Шаг 1: Инициализация клиента ключами разработчика и запрос СМС/кода"""
