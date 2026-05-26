@@ -93,6 +93,24 @@ services:
       - ./zipdata:/app/data
     networks:
       - chat-network
+  frontend:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.front
+    container_name: chat-prep-frontend
+    ports:
+      - ${FRONTEND_PORT:-8501}:${FRONTEND_PORT:-8501}
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FRONTEND_PORT=${FRONTEND_PORT:-8501}
+      - BACKEND_URL_1=http://etl-service:${ETL_PORT:-8067}
+      - BACKEND_URL_2=http://testing-system:${TESTING_SYSTEM_PORT:-8882}
+    networks:
+      - chat-network
+    depends_on:
+      - etl-service  
+
+
 
 networks:
   chat-network:

@@ -70,3 +70,26 @@ llm-env = ["llm"]
 
 [pypi-dependencies]
 qdrant-client = ">=1.18.0, <2"
+
+
+[tasks]
+# Сборка всех образов с динамическим чтением портов из config.yaml
+build = { cmd = "python -c \"import yaml, os; c=yaml.safe_load(open('config/config.yaml')); os.environ['ETL_PORT']=str(c['etl']['port']); os.environ['FRONTEND_PORT']=str(c['frontend']['port']); os.environ['TESTING_SYSTEM_PORT']=str(c['testing_system']['port'])\" && docker compose build" }
+
+# Остановка всей системы и очистка volumes
+down = "docker compose down -v"
+
+# Просмотр логов
+logs = "docker compose logs -f"
+
+# Запуск всей системы
+up = { cmd = "python -c \"import yaml, os; c=yaml.safe_load(open('config/config.yaml')); os.environ['ETL_PORT']=str(c['etl']['port']); os.environ['FRONTEND_PORT']=str(c['frontend']['port']); os.environ['TESTING_SYSTEM_PORT']=str(c['testing_system']['port']); prof='--profile ollama' if c['testing_system']['assistants']['type']=='ollama' else ''; os.system(f'docker compose {prof} up -d')\"" }
+
+# Поднять frontend
+up-front = { cmd = "python -c \"import yaml, os; c=yaml.safe_load(open('config/config.yaml')); os.environ['ETL_PORT']=str(c['etl']['port']); os.environ['FRONTEND_PORT']=str(c['frontend']['port']); os.environ['TESTING_SYSTEM_PORT']=str(c['testing_system']['port'])\" && docker compose up -d frontend" }
+
+#  Поднять  ETL + база 
+up-etl = { cmd = "python -c \"import yaml, os; c=yaml.safe_load(open('config/config.yaml')); os.environ['ETL_PORT']=str(c['etl']['port']); os.environ['FRONTEND_PORT']=str(c['frontend']['port']); os.environ['TESTING_SYSTEM_PORT']=str(c['testing_system']['port'])\" && docker compose up -d etl-service qdrant" }
+
+# Поднять  Тестовую систему
+up-ts = { cmd = "python -c \"import yaml, os; c=yaml.safe_load(open('config/config.yaml')); os.environ['ETL_PORT']=str(c['etl']['port']); os.environ['FRONTEND_PORT']=str(c['frontend']['port']); os.environ['TESTING_SYSTEM_PORT']=str(c['testing_system']['port']); prof='--profile ollama' if c['testing_system']['assistants']['type']=='ollama' else ''; os.system(f'docker compose {prof} up -d testing-system')\"" }
