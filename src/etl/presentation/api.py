@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks, status, Query, Resp
 from pydantic import BaseModel, Field
 from typing import Optional
 import os
+import logging
 from src.etl.presentation.factory import create_client
 from src.etl.adapter.repository import QdrantFastEmbedRepository
 from src.etl.usecase.get_data import GetMessageUseCase
@@ -21,6 +22,7 @@ _tg_client = None
 anonymizer = TelegramAnonymizer()
 phone_code_hashes = {}
 user_configured_clients = {}
+logger = logging.getLogger("uvicorn.error")
 
 
 class SendCodeRequest(BaseModel):
@@ -40,8 +42,6 @@ async def health_check(response: Response):
     Эндпоинт для тест-системы (Health Check).
     Проверяет статус самого сервиса и сетевое соединение с Qdrant.
     """
-    from fastapi import Response # Добавим локально на случай, если забыли в импортах сверху
-    
     health_status = {
         "status": "healthy",
         "components": {
@@ -51,17 +51,12 @@ async def health_check(response: Response):
     }
     
     try:
-        # Проверяем, отвечает ли Qdrant по сети. 
-        # У qdrant_client метод get_locks() — самый быстрый способ пинга.
-        if hasattr(repo, '_client'):
-            await repo._client.get_locks()
-            health_status["components"]["qdrant"] = "connected"
-        else:
-            # На случай, если клиент внутри репозитория называется иначе
-            health_status["components"]["qdrant"] = "connected (skipped deep check)"
+        await repo.ping()  
+        health_status["components"]["qdrant"] = "connected"
             
     except Exception as e:
         # Если Qdrant упал или выдал таймаут
+        logger.error(f"Health check failed for Qdrant: {str(e)}", exc_info=True)
         health_status["status"] = "unhealthy"
         health_status["components"]["qdrant"] = f"disconnected: {str(e)}"
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
@@ -103,7 +98,7 @@ async def tg_send_code(request: SendCodeRequest):
         if not client.is_connected():
             await client.connect()
             
-        # Если клиент каким-то чудом уже авторизован (например, сессия осталась на диске)
+        # Если клиент уже авторизован (сессия осталась на диске)
         if await client.is_user_authorized():
             global _tg_client
             _tg_client = client
