@@ -39,4 +39,4 @@ EXPOSE 8067
 
 # Точка входа: теперь путь железно указывает на /app/shell-hook.sh
 ENTRYPOINT ["/bin/bash", "/app/shell-hook.sh"]
-CMD ["python", "-m", "src.etl.presentation.api"]
+CMD ["python", "-m", "src.etl.cmd.main"]

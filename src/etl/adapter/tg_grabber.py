@@ -1,3 +1,4 @@
+import logging
 from typing import Any, List, Optional
 from src.etl.domain.interfaces import IParser
 from src.etl.domain.value_objects import MessageMetadata
@@ -6,6 +7,8 @@ from src.etl.usecase.anonymiser import TelegramAnonymizer
 from dataclasses import replace
 import os
 import asyncio
+
+logger = logging.getLogger(__name__)
 
 class TelegramGrabber:
     def __init__(self, client: TelegramClient, parser: IParser):
@@ -16,9 +19,9 @@ class TelegramGrabber:
         if not self.client.is_connected():
             await self.client.start()
         if not await self.client.is_user_authorized():
-            print("\n  Telegram session not found")
+            logger.info("\n  Telegram session not found")
             await self.client.start()
-            print("Autorization is successful. Session saved.\n")
+            logger.info("Autorization is successful. Session saved.\n")
 
     async def grab_chat(self, chat_entity: str, limit: int = 10):
         # Убеждаемся, что клиент запущен

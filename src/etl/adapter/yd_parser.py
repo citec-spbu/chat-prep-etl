@@ -1,3 +1,4 @@
+import logging
 import os
 import zipfile
 import requests
@@ -6,11 +7,11 @@ import shutil
 from dataclasses import replace
 from typing import List, Any, Optional
 from bs4 import BeautifulSoup
-from loguru import logger
 from src.etl.domain.interfaces import IParser
 from src.etl.domain.value_objects import MessageMetadata
 from src.etl.usecase.anonymiser import TelegramAnonymizer
 
+logger = logging.getLogger(__name__)
 
 class HTMLParser(IParser):
     def __init__(self, source_name: str = "telegram_html_export", anonymizer: Optional[TelegramAnonymizer] = None):
@@ -127,6 +128,4 @@ class ArchiveChatParser:
                                 all_messages.extend(messages)
                         except Exception as e:
                             logger.warning(f"Ошибка при чтении файла {file}: {e}")
-        return all_messages
-
         return all_messages

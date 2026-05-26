@@ -72,4 +72,7 @@ class IDataLoader(ABC):
 
     @abstractmethod
     async def load(self, source: str) -> List[MessageMetadata]:
+        """
+        Загружает все данные из источника, приводя к внутренней структуре.
+        """
         pass

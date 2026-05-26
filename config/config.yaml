@@ -1,6 +1,6 @@
 testing_system:
   host: "0.0.0.0"
-  port: 8501
+  port: 8882
   num_process_workers: 1
   num_eval_workers: 1
 
@@ -37,18 +37,38 @@ testing_system:
     type: yaml
     path: ${EXPERIMENTS_PATH:/experiments}
 
-logging:
-  version: 1
-  disable_existing_loggers: false
-  formatters:
-    default:
-      format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-  handlers:
-    console:
-      class: logging.StreamHandler
+  logging:
+    version: 1
+    disable_existing_loggers: false
+    formatters:
+      default:
+        format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    handlers:
+      console:
+        class: logging.StreamHandler
+        level: DEBUG
+        formatter: default
+        stream: ext://sys.stderr                # явно указываем stderr
+    root:
       level: DEBUG
-      formatter: default
-      stream: ext://sys.stderr                # явно указываем stderr
-  root:
-    level: DEBUG
-    handlers: [console]
+      handlers: [console]
+
+etl:
+  host: "0.0.0.0"
+  port: 8067
+
+  logging:
+    version: 1
+    disable_existing_loggers: false
+    formatters:
+      default:
+        format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    handlers:
+      console:
+        class: logging.StreamHandler
+        level: DEBUG
+        formatter: default
+        stream: ext://sys.stderr                # явно указываем stderr
+    root:
+      level: DEBUG
+      handlers: [console]
