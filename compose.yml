@@ -6,23 +6,20 @@ services:
       dockerfile: ./docker/Dockerfile.testing_system
     image: testing-system:dev
     ports:
-      - "8881:8501"
+      - ${TESTING_SYSTEM_PORT:-8881}:${TESTING_SYSTEM_PORT:-8881}
     volumes:
-      # Три папки с данными, которые должны быть доступны и изменяемы с хоста
-      - ./src/testing_system/config:/testing_system/config
+      - ./config:/testing_system/config
       - ./experiments:/testing_system/experiments
       - ./experiment_results:/testing_system/experiment_results
       - ./prompts:/testing_system/prompts
     environment:
-      - CONFIG_PATH=/testing_system/config/config.yaml
+      - TESTING_CONFIG_PATH=/testing_system/config/config.yaml
       - EXPERIMENTS_PATH=/testing_system/experiments
       - RESULTS_PATH=/testing_system/experiment_results
       - PROMPTS_PATH=/testing_system/prompts
       - DEEPEVAL_CACHE_DIR=/tmp/.deepeval
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - HF_TOKEN=${HF_TOKEN}
-      # Версия CUDA, если нужна
-      - NVIDIA_VISIBLE_DEVICES=all
     deploy:
       resources:
         reservations:
@@ -32,9 +29,9 @@ services:
               capabilities: [gpu]
     networks:
       - chat-network
-    user: "1000:1000"   # принудительно, если внутри образ уже app (uid 1000)
+    user: "1000:1000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8881/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${TESTING_SYSTEM_PORT:-8881}/health"]
       interval: 10s
       timeout: 5s
       retries: 1
@@ -43,7 +40,7 @@ services:
     image: ollama/ollama:latest
     container_name: ollama
     ports:
-      - "11434:11434"
+      - ${OLLAMA_PORT:-11434}:${OLLAMA_PORT:-11434}
     volumes:
       - /.ollama:/root/.ollama
     deploy:
@@ -51,11 +48,12 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              count: all # Use '1' to limit to a single GPU
+              count: all
               capabilities: [gpu]
     networks:
       - chat-network
     restart: unless-stopped
+    profiles: ["ollama"]
 
   etl-service:
     build:
@@ -63,15 +61,14 @@ services:
       dockerfile: ./docker/Dockerfile.etl
     container_name: chat-prep-etl-service
     ports:
-      - "8067:8067"
+      - ${ETL_PORT:-8067}:${ETL_PORT:-8067}
     volumes:
-      # Монтируем локальные папки, чтобы логи и сессии TG не стирались при перезапуске контейнера
+      - ./config:/app/config
       - ./logs:/app/logs
       - ./sessions:/app/sessions
-      # Сюда ты сможешь закидывать ZIP-архивы для инжеста с локальной машины
       - ./zipdata:/app/zipdata 
     environment:
-      # Подтягиваем всё из файла .env
+      - ETL_CONFIG_PATH=/app/config/config.yaml
       - QDRANT_URL=http://qdrant:6333
       - QDRANT_API_KEY=bee
       - QDRANT_COLLECTION_NAME=messages
@@ -80,7 +77,6 @@ services:
       - TG_PROXY_ADDR=host.docker.internal
       - TG_PROXY_PORT=10808
       - TG_PROXY_TYPE=socks5
-      # Переменные для Telegram (подтянутся из твоего .env файла на хосте)
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -88,7 +84,6 @@ services:
     networks:
       - chat-network
 
-  # Официальный контейнер векторной базы Qdrant
   qdrant:
     image: qdrant/qdrant:latest
     container_name: qdrant-vector-db
@@ -96,7 +91,6 @@ services:
       - "6333:6333"
       - "6334:6334"
     volumes:
-      # Сохраняем базу данных на жестком диске хоста, чтобы данные не пропадали
       - ./qdrant_storage:/qdrant/storage:z
       - ./zipdata:/app/data
     networks:
