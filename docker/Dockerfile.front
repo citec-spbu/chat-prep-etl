@@ -1,0 +1,25 @@
+FROM prefixdotdev/pixi:latest AS runner
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIXI_IN_PROD=1
+
+WORKDIR /app
+
+COPY pixi.toml pixi.lock ./
+
+RUN --mount=type=cache,target=/root/.cache/pixi \
+    pixi install --environment front-env
+
+
+COPY src/frontend/ ./src/frontend/
+
+# Создаем безопасного пользователя, чтобы не запускать приложение из-под root
+RUN useradd -u 1000 -m appuser && chown -R appuser:appuser /app
+USER appuser
+
+# Открываем дефолтный порт Streamlit наружу
+EXPOSE 8501
+
+# Запуск Streamlit через контекст pixi в нужном окружении front-env
+ENTRYPOINT ["pixi", "run", "--environment", "front-env", "streamlit", "run", "src/frontend/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
