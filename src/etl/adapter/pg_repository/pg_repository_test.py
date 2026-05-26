@@ -2,7 +2,7 @@ import asyncio
 import asyncpg
 
 from src.etl.adapter.pg_repository.test_messages import test_messages
-from src.etl.adapter.pg_repository.pg_repository import PostgresRepository
+from etl.adapter.pg_repository import PostgresRepository
 
 
 async def init_database(dsn: str, with_drop: bool = True) -> None:

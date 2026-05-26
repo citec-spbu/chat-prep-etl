@@ -1,14 +1,15 @@
 import asyncio
+import logging
 import uuid
 from typing import List
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.http import models
 from dataclasses import asdict
 from fastembed import TextEmbedding
-from loguru import logger
 from src.etl.domain.interfaces import IRepository
 from src.etl.domain.value_objects import MessageMetadata
 
+logger = logging.getLogger(__name__)
 
 class QdrantFastEmbedRepository(IRepository):
     """
