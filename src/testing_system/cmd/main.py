@@ -36,7 +36,7 @@ async def main():
         "RESULTS_PATH",
         cfg["testing_system"]["registries"]["local"]["path"]
     )
-    logging.config.dictConfig(cfg.get("logging", {}))
+    logging.config.dictConfig(cfg.get("testing_system").get("logging", {}))
     logger = logging.getLogger(__name__)
     logger.info("Starting Testing System")
     logger.info(f"Evaluation is provided by {cfg['testing_system']['eval']}")
@@ -46,7 +46,7 @@ async def main():
         app,
         host=cfg["testing_system"]["host"],
         port=cfg["testing_system"]["port"],
-        log_config=cfg.get("logging", {}),
+        log_config=cfg.get("testing_system").get("logging", {}),
     )
     server = uvicorn.Server(config)
     await server.serve()
