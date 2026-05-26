@@ -31,7 +31,8 @@ class QdrantFastEmbedRepository(IRepository):
         self._client = AsyncQdrantClient(url=url, api_key=api_key)
         self._collection_name = collection_name
         self._model = TextEmbedding(
-            model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+            model_name="sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+        )
         
 
     async def _ensure_collection(self):
@@ -41,7 +42,7 @@ class QdrantFastEmbedRepository(IRepository):
             await self._client.create_collection(
                 collection_name=self._collection_name,
                 vectors_config=models.VectorParams(
-                    size=384,
+                    size=768,
                     distance=models.Distance.COSINE
                     )
               )

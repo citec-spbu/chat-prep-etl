@@ -21,7 +21,7 @@ async def test():
     client.create_collection(
         collection_name=COLLECTION_NAME,
         vectors_config=models.VectorParams(
-            size=384,
+            size=768,
             distance=models.Distance.COSINE
         ),
         on_disk_payload=True
@@ -29,7 +29,7 @@ async def test():
     client.create_payload_index(
         collection_name=COLLECTION_NAME,
         field_name="chat_id",
-        field_schema=models.PayloadSchemaType.INTEGER,
+        field_schema=models.PayloadSchemaType.KEYWORD,
     )
 
     repo = QdrantFastEmbedRepository(URL, API_KEY, COLLECTION_NAME)
