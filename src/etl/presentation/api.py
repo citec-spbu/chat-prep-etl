@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks, status, Query, Resp
 from pydantic import BaseModel, Field
 from typing import Optional
 import os
+import logging
 from src.etl.presentation.factory import create_client
 from src.etl.adapter.repository import QdrantFastEmbedRepository
 from src.etl.usecase.get_data import GetMessageUseCase
@@ -23,6 +24,7 @@ class LoginRequest(BaseModel):
     phone: str = Field(..., description="Номер телефона")
     code: str = Field(..., description="Код подтверждения из Телеграма")
     password: Optional[str] = Field(None, description="Облачный пароль (двухфакторная аутентификация 2FA), если включен")
+
 class IngestRequest(BaseModel):
     source_type: str = Field(..., description="Допустимые типы: telegram, yandex, html")
     source_path: str = Field(..., description="Путь к локальному файлу/архиву или имя чата")
@@ -86,13 +88,21 @@ def create_app() -> FastAPI:
             health_status["components"]["qdrant"] = f"disconnected: {str(e)}"
             response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
             
+
         return health_status
     @app.post("/tg/send-code", tags=["Telegram Auth"])
     async def tg_send_code(request: SendCodeRequest):
-        """Шаг 1: Инициализация клиента ключами разработчика и запрос СМС/кода"""
+        """Шаг 1: Инициализация клиента ключами разработчика и запрос СМS/кода"""
         final_api_id = request.api_id or os.getenv("TG_API_ID")
         final_api_hash = request.api_hash or os.getenv("TG_API_HASH")
-        
+        if await client.is_user_authorized():
+            global _tg_client
+            _tg_client = client
+            return {"status": "success", "message": "Вы уже успешно авторизованы в системе!"}
+
+        # Запрашиваем код у Telegram
+        result = await client.send_code_request(request.phone)
+        # Запоминаем состояние в памяти сервера        
         if not final_api_id or not final_api_hash:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, 

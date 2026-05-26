@@ -34,6 +34,14 @@ class QdrantFastEmbedRepository(IRepository):
             model_name="sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
         )
         
+    async def ping(self) -> bool:
+        """Проверяет соединение с Qdrant."""
+        try:
+            await self._client.get_collections()
+            return True
+        except Exception as e:
+            logger.error(f"Ping failed: {e}")
+            return False
 
     async def _ensure_collection(self):
         """Проверяет существование коллекции и создает её, если нужно"""

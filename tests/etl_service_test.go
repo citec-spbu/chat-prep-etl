@@ -4,11 +4,20 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"os"
 	"testing"
 	"time"
 )
 
-const BaseURL = "http://localhost:8067"
+func getBaseURL() string {
+	url := os.Getenv("ETL_PORT")
+	if url == "" {
+		return "http://localhost:8067"
+	}
+	return url
+}
+
+var baseURL = getBaseURL()
 
 type HealthResponse struct {
 	Status     string `json:"status"`
@@ -26,9 +35,9 @@ type SearchResponse struct {
 func TestLive_HealthCheck(t *testing.T) {
 	client := &http.Client{Timeout: 5 * time.Second}
 
-	resp, err := client.Get(BaseURL + "/health/")
+	resp, err := client.Get(baseURL + "/health/")
 	if err != nil {
-		t.Fatalf("API недоступно по адресу %s. Ошибка: %v", BaseURL, err)
+		t.Fatalf("API недоступно по адресу %s. Ошибка: %v", baseURL, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusServiceUnavailable {
@@ -61,7 +70,7 @@ func TestLive_Search_Success(t *testing.T) {
 	params.Add("k", "1")
 	params.Add("clean", "raw")
 
-	searchURL := BaseURL + "/search?" + params.Encode()
+	searchURL := baseURL + "/search?" + params.Encode()
 
 	resp, err := client.Get(searchURL)
 	if err != nil {
@@ -82,7 +91,7 @@ func TestLive_Search_Success(t *testing.T) {
 func TestLive_Search_ValidationError_EmptyQuery(t *testing.T) {
 	client := &http.Client{Timeout: 5 * time.Second}
 
-	searchURL := BaseURL + "/search?query=&chat_id=101&clean=raw"
+	searchURL := baseURL + "/search?query=&chat_id=101&clean=raw"
 
 	resp, err := client.Get(searchURL)
 	if err != nil {
