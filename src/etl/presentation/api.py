@@ -1,7 +1,8 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks, status, Query
+from fastapi import FastAPI, HTTPException, BackgroundTasks, status, Query, Response
 from pydantic import BaseModel, Field
 from typing import Optional
 import os
+import logging
 from src.etl.presentation.factory import create_client
 from src.etl.adapter.repository import QdrantFastEmbedRepository
 from src.etl.usecase.get_data import GetMessageUseCase
@@ -24,12 +25,12 @@ class LoginRequest(BaseModel):
     code: str = Field(..., description="Код подтверждения из Телеграма")
     password: Optional[str] = Field(None, description="Облачный пароль (двухфакторная аутентификация 2FA), если включен")
 
+
 class IngestRequest(BaseModel):
     source_type: str = Field(..., description="Допустимые типы: telegram, yandex, html")
     source_path: str = Field(..., description="Путь к локальному файлу/архиву или имя чата")
     chat_id: Optional[int] = Field(0, description="Числовой ID чата")
     limit: Optional[int] = Field(100, description="Лимит сообщений для Telegram API")
-
 async def get_active_tg_client():
     global _tg_client
     if _tg_client is None:
@@ -49,12 +50,55 @@ def create_app() -> FastAPI:
     phone_code_hashes = {}
     user_configured_clients = {}
     
-    repo = QdrantFastEmbedRepository(url, api_key, collection_name)
-    get_message_use_case = GetMessageUseCase(repo)
-    anonymizer = TelegramAnonymizer()
+    if not final_api_id or not final_api_hash:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Ключи API не найдены. Введите их в форму или добавьте в .env сервера."
+        )
+        
+    try:
+        client = await create_client(api_id=int(final_api_id), api_hash=final_api_hash)
+        
+        if not client.is_connected():
+            await client.connect()
+            
+        # Если клиент уже авторизован (сессия осталась на диске)
+        if await client.is_user_authorized():
+            global _tg_client
+            _tg_client = client
+            return {"status": "success", "message": "Вы уже успешно авторизованы в системе!"}
 
     app = FastAPI(title="Chat Prep ETL API")
 
+    @app.get("/health/", tags=["Infrastructure"], status_code=status.HTTP_200_OK)
+    async def health_check(response: Response):"""
+      Эндпоинт для тест-системы (Health Check).
+      Проверяет статус самого сервиса и сетевое соединение с Qdrant.
+      """
+      
+        health_status = {
+            "status": "healthy",
+            "components": {
+                "etl_service": "up",
+                "qdrant": "unknown"
+            }
+        }
+
+        try:
+            await repo.ping()  
+            health_status["components"]["qdrant"] = "connected"
+
+      except Exception as e:
+          # Если Qdrant упал или выдал таймаут
+          logger.error(f"Health check failed for Qdrant: {str(e)}", exc_info=True)
+          health_status["status"] = "unhealthy"
+          health_status["components"]["qdrant"] = f"disconnected: {str(e)}"
+          response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+      return health_status
+
+  
+  
     @app.post("/tg/send-code", tags=["Telegram Auth"])
     async def tg_send_code(request: SendCodeRequest):
         """Шаг 1: Инициализация клиента ключами разработчика и запрос СМС/кода"""
