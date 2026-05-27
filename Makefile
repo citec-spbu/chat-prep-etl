@@ -9,7 +9,15 @@ TESTING_SYSTEM_PORT := $(shell $(YQ) '.testing_system.port // 8501' config/confi
 ASSISTANTS_TYPE    := $(shell $(YQ) '.testing_system.assistants.type // "cloud"' config/config.yaml 2>/dev/null)
 OLLAMA_PORT        := $(shell $(YQ) '.testing_system.assistants.ollama.port // 11434' config/config.yaml 2>/dev/null)
 ETL_PORT        := $(shell $(YQ) '.etl.port // 8067' config/config.yaml 2>/dev/null)
+FRONTEND_PORT        := $(shell $(YQ) '.frontend.port // 8501' config/config.yaml 2>/dev/null)
 OLLAMA_ENABLED := $(if $(filter ollama,$(ASSISTANTS_TYPE)),true,false)
+
+export TESTING_SYSTEM_PORT
+export OLLAMA_PORT
+export ETL_PORT
+export FRONTEND_PORT
+export ASSISTANTS_TYPE
+
 
 .PHONY: help build up down logs open
 

@@ -1,16 +1,22 @@
 import requests
+import streamlit as st
+import os
 
-BACKEND_URL_1 = "http://100.76.31.66:8067" #Эдика
-BACKEND_URL_2 = "http://100.106.4.6:8881" 
+BACKEND_URL_1 = os.environ.get("BACKEND_URL_1", "http://127.0.0.1:8067")
+BACKEND_URL_2 = os.environ.get("BACKEND_URL_2", "http://127.0.0.1:8881")
 
 
+@st.cache_data(ttl=10)
+def check_health_1():
 
-def check_health():
-
+    return requests.get(
+        f"{BACKEND_URL_1}/health"
+    )
+@st.cache_data(ttl=10)
+def check_health_2():
     return requests.get(
         f"{BACKEND_URL_2}/health"
     )
-
 
 def run_ingest(payload):
 

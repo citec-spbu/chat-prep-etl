@@ -1,0 +1,25 @@
+FROM ghcr.io/prefix-dev/pixi:latest AS runner
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIXI_IN_PROD=1
+
+WORKDIR /app
+
+COPY pixi.toml pixi.lock ./
+
+RUN --mount=type=cache,target=/root/.cache/pixi \
+    pixi install --environment front-env
+
+
+COPY src/frontend/ ./src/frontend/
+
+
+RUN chown -R 1000:1000 /app
+USER 1000
+
+
+EXPOSE 8501
+
+
+ENTRYPOINT ["sh", "-c", "pixi run --environment front-env streamlit run src/frontend/app.py --server.port=${FRONTEND_PORT:-8501} --server.address=0.0.0.0"]

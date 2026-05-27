@@ -7,6 +7,7 @@ services:
     image: testing-system:dev
     ports:
       - ${TESTING_SYSTEM_PORT:-8881}:${TESTING_SYSTEM_PORT:-8881}
+    profiles: ["testing"]
     volumes:
       - ./config:/testing_system/config
       - ./experiments:/testing_system/experiments
@@ -67,16 +68,17 @@ services:
       - ./logs:/app/logs
       - ./sessions:/app/sessions
       - ./zipdata:/app/zipdata 
+      - fastembed_cache:/tmp/fastembed_cache
     environment:
       - ETL_CONFIG_PATH=/app/config/config.yaml
-      - QDRANT_URL=http://qdrant:6333
       - QDRANT_API_KEY=bee
       - QDRANT_COLLECTION_NAME=messages
-      - TG_API_ID=34395921
+      - QDRANT_ENDPOINT=http://qdrant-vector-db:6333
       - TG_API_HASH=a86566d239b6d15c97b57d48637b27be
       - TG_PROXY_ADDR=host.docker.internal
       - TG_PROXY_PORT=10808
       - TG_PROXY_TYPE=socks5
+      - FASTEMBED_CACHE_PATH=/tmp/fastembed_cache
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -95,6 +97,24 @@ services:
       - ./zipdata:/app/data
     networks:
       - chat-network
+  frontend:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.front
+    container_name: chat-prep-frontend
+    ports:
+      - ${FRONTEND_PORT:-8501}:${FRONTEND_PORT:-8501}
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FRONTEND_PORT=${FRONTEND_PORT:-8501}
+      - BACKEND_URL_1=http://etl-service:${ETL_PORT:-8067}
+      - BACKEND_URL_2=http://testing-system:${TESTING_SYSTEM_PORT:-8881}
+    networks:
+      - chat-network
+    depends_on:
+      - etl-service  
+
+
 
 networks:
   chat-network:
@@ -103,3 +123,4 @@ networks:
 
 volumes:
   ollama_data:
+  fastembed_cache:

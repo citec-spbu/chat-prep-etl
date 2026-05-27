@@ -31,6 +31,8 @@ class IngestRequest(BaseModel):
     source_path: str = Field(..., description="Путь к локальному файлу/архиву или имя чата")
     chat_id: Optional[int] = Field(0, description="Числовой ID чата")
     limit: Optional[int] = Field(100, description="Лимит сообщений для Telegram API")
+
+
 async def get_active_tg_client():
     global _tg_client
     if _tg_client is None:
@@ -112,12 +114,13 @@ def create_app() -> FastAPI:
             )
             
         try:
+            # Сначала создаем экземпляр клиента
             client = await create_client(api_id=int(final_api_id), api_hash=final_api_hash)
             
             if not client.is_connected():
                 await client.connect()
                 
-            # Если клиент каким-то чудом уже авторизован (например, сессия осталась на диске)
+            # Теперь проверять статус авторизации — безопасно!
             if await client.is_user_authorized():
                 global _tg_client
                 _tg_client = client
@@ -152,13 +155,11 @@ def create_app() -> FastAPI:
             if not client.is_connected():
                 await client.connect()
 
-            # Импортируем ошибку Telethon для проверки на 2FA (если используешь Telethon)
-            # Если используешь Pyrogram, ошибка называется: pyrogram.errors.SessionPasswordNeeded
-            from telethon.errors import SessionPasswordNeededError
-        except ImportError:
-            SessionPasswordNeededError = None
+            try:
+                from telethon.errors import SessionPasswordNeededError
+            except ImportError:
+                SessionPasswordNeededError = None
 
-        try:
             # Пробуем войти по коду
             await client.sign_in(
                 phone=request.phone, 
@@ -167,17 +168,15 @@ def create_app() -> FastAPI:
             )
             
         except Exception as e:
-            # Проверяем, требует ли Telegram облачный пароль (2FA)
             is_2fa_error = "password is required" in str(e) or (SessionPasswordNeededError and isinstance(e, SessionPasswordNeededError))
             
             if is_2fa_error:
                 if not request.password:
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="На аккаунте включена двухфакторная аутентификация (2FA). Пожалуйста, повторите запрос, передав ваш облачный пароль в поле 'password'."
+                        detail="На аккаунте включена двухфакторная аутентификация (2FA). Пожалуйста, передав облачный пароль."
                     )
                 try:
-                    # Если пользователь передал пароль, отправляем его в Telegram
                     await client.sign_in(password=request.password)
                 except Exception as pwd_err:
                     print(f"Ошибка ввода облачного пароля: {str(pwd_err)}")
@@ -186,18 +185,15 @@ def create_app() -> FastAPI:
                         detail=f"Неверный облачный пароль (2FA): {str(pwd_err)}"
                     )
             else:
-                # Если это какая-то другая ошибка (например, неверный код)
                 print(f"Ошибка авторизации Telegram: {str(e)}")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST, 
                     detail=f"Неверный код или ошибка сессии: {str(e)}"
                 )
                 
-        # Если мы дошли досюда — авторизация успешна (по коду или по паролю)
         global _tg_client
         _tg_client = client
         
-        # Очищаем временную память сервера
         phone_code_hashes.pop(request.phone, None)
         user_configured_clients.pop(request.phone, None)
         
@@ -206,7 +202,6 @@ def create_app() -> FastAPI:
     @app.post("/ingest", status_code=status.HTTP_202_ACCEPTED)
     async def ingest_messages(request: IngestRequest, background_tasks: BackgroundTasks):
         """Эндпоинт для запуска загрузки данных"""
-
         allowed_sources = ["telegram", "yandex", "html"]
         if request.source_type not in allowed_sources:
             raise HTTPException(
@@ -214,7 +209,6 @@ def create_app() -> FastAPI:
                 detail=f"Неверный тип источника '{request.source_type}'. Допустимые: {', '.join(allowed_sources)}"
             )
 
-        # 2. Валидация путей файлов (404 Not Found) — проверяем ДО ухода в фоновый поток
         if request.source_type in ["html", "yandex"]:
             if not os.path.exists(request.source_path):
                 raise HTTPException(
@@ -226,7 +220,7 @@ def create_app() -> FastAPI:
             if request.source_type == "telegram":
                 client = await get_active_tg_client()
                 if not await client.is_user_authorized():
-                    raise HTTPException(status_code=401, detail="Telegram-клиент не авторизован. Пройдите /tg/send-code")
+                    raise HTTPException(status_code=401, detail="Telegram-клиент не авторизован.")
                 parser = TelegramParser(client, anonymizer)
                 grabber = TelegramGrabber(client, parser)
                 loader = TelegramLoader(grabber)
@@ -240,41 +234,26 @@ def create_app() -> FastAPI:
             else:
                 raise HTTPException(status_code=400, detail="Unknown source type")
 
-            # 2. Создаем UseCase и запускаем в фоне
             save_use_case = SaveDataUseCase(loader, repo)
-            
-            if request.source_type == "telegram":
-                background_tasks.add_task(save_use_case.execute, request.source_path)
-            else:
-                background_tasks.add_task(save_use_case.execute, request.source_path)
+            background_tasks.add_task(save_use_case.execute, request.source_path)
 
             return {
                 "status": "accepted", 
                 "message": f"Загрузка из {request.source_type} запущена в фоновом режиме"
             }
         except HTTPException:
-            # Пробрасываем созданные нами HTTPException без изменений
             raise
-
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Внутренняя ошибка сервера при запуске задачи: {str(e)}"
             )
 
-
     @app.get("/search")
     async def search(query: str = Query(..., description=" Поисковый запрос "),
                     chat_id: int = Query(..., description="ID чата (например, 101)"),
                     k: int = Query(1, description="Сколько сообщений вернуть"),
-                    clean: str = Query("raw", description=" Тип данных: clean/raw+clean/raw(clear_service)")):
-        """
-        Семантический поиск по сообщениям.
-        :param query: Твой поисковый запрос (то, что мы тестировали)
-        :param chat_id: ID чата (например, 101)
-        :param k: Сколько сообщений вернуть
-        :param clean: Нужно ли прогнать через очистку (clear_service)
-        """
+                    clean: str = Query("raw", description=" Тип данных: clean/raw+clean/raw")):
         if not query.strip():
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -290,13 +269,10 @@ def create_app() -> FastAPI:
 
         try:
             if clean == "clean":
-
                 results = await get_message_use_case.get_clean(query, chat_id, k)
             elif clean == "raw+clean":
-
                 results = await get_message_use_case.get_raw_clear(query, chat_id, k)
             elif clean == "raw":
-
                 results = await get_message_use_case.get_raw(query, chat_id, k)
                 
             if not results:
@@ -310,4 +286,5 @@ def create_app() -> FastAPI:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Ошибка на стороне векторного хранилища: {str(e)}"
             )
+            
     return app
