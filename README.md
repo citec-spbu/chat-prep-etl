@@ -147,18 +147,38 @@ Experiment:
 
 ---
 
-# Запуск проекта
+  # Запуск проекта
+  ## Windows
+  ### Установка pixi  ``` iwr -useb https://pixi.sh/install.ps1 | iex```
+  ### Сборка контейнеров
+  ```
+  pixi run build
+  ```
+  ### Запуск всей системы
+  ```
+  pixi run up-front
+  ```
+  ### Запуск frontend-части ```pixi run up-frontend```
+  ### Запуск etl-инструмента ```pixi run up-etl```
+  ### Запуск testing-system ```pixi run up-ts```
 
-## Backend
+  ### Отключение ```pixi run down```
+  ### Просмотр логов```pixi run logs```
 
-```bash
-uvicorn src.api.main:app --reload
-```
+  ## Linux
+  ### Установка утилиты Makefile ```sudo apt-get install make```
+  ### Сборка контейнеров
+  ```
+  make build
+  ```
+  ### Запуск всей системы
+  ```
+  make up
+  ```
+  ### Запуск frontend-части ```make up SERVICE=frontend```
+  ### Запуск etl-инструмента ```make up SERVICE=etl-service```
+  ### Запуск testing-system ```make up SERVICE=testing-system```
 
-## Frontend
-
-```bash
-streamlit run frontend/streamlit_app.py
-```
-
----
+  ### Отключение ```make down```
+  ### Просмотр логов в винтерактивном формате ```make logs SYSTEM=<system to show logs from, optional>```
+  
