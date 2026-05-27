@@ -108,7 +108,7 @@ services:
       - PYTHONUNBUFFERED=1
       - FRONTEND_PORT=${FRONTEND_PORT:-8501}
       - BACKEND_URL_1=http://etl-service:${ETL_PORT:-8067}
-      - BACKEND_URL_2=http://testing-system:${TESTING_SYSTEM_PORT:-8882}
+      - BACKEND_URL_2=http://testing-system:${TESTING_SYSTEM_PORT:-8881}
     networks:
       - chat-network
     depends_on:
