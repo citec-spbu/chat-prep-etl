@@ -1,14 +1,15 @@
 import asyncio
+import logging
 import uuid
 from typing import List
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.http import models
 from dataclasses import asdict
 from fastembed import TextEmbedding
-from loguru import logger
 from src.etl.domain.interfaces import IRepository
 from src.etl.domain.value_objects import MessageMetadata
 
+logger = logging.getLogger(__name__)
 
 class QdrantFastEmbedRepository(IRepository):
     """
@@ -30,15 +31,9 @@ class QdrantFastEmbedRepository(IRepository):
         self._client = AsyncQdrantClient(url=url, api_key=api_key)
         self._collection_name = collection_name
         self._model = TextEmbedding(
-            model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
-    async def ping(self) -> bool:
-        """Проверяет соединение с Qdrant."""
-        try:
-            await self._client.get_collections()
-            return True
-        except Exception as e:
-            logger.error(f"Ping failed: {e}")
-            return False
+            model_name="sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+        )
+        
 
     async def _ensure_collection(self):
         """Проверяет существование коллекции и создает её, если нужно"""
@@ -47,7 +42,7 @@ class QdrantFastEmbedRepository(IRepository):
             await self._client.create_collection(
                 collection_name=self._collection_name,
                 vectors_config=models.VectorParams(
-                    size=384,
+                    size=768,
                     distance=models.Distance.COSINE
                     )
               )

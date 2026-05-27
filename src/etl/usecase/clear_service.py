@@ -4,9 +4,7 @@ import logging
 
 from src.etl.domain.value_objects import MessageMetadata
 
-#Логер
-logging.basicConfig(level = logging.INFO, filename="test_servise/cleaning.log", filemode="w", encoding="utf-8", format = "%(asctime)s | %(levelname)s | %(message)s")
-logger = logging.getLogger("test_clean.log")
+logger = logging.getLogger(__name__)
 
 def remove_emoji(text):
     return emoji.replace_emoji(text, replace='')
@@ -38,8 +36,8 @@ def clean_text(text):
         
         logger.info("Текст очищен")
         return text
-    except Exception:
-        logger.exception("Ошибка c очисткой")
+    except Exception as e:
+        logger.exception(f"Ошибка c очисткой: {e}")
         return ""
 
 def build_attachment_text(attached_files):
@@ -69,16 +67,15 @@ def build_attachment_text(attached_files):
             else:
                 markers.append("[FILE]")
 
-        logger.info("Маркеры поставлены")
+        logger.info("Cleaner: Маркеры поставлены")
         return " ".join(markers)
     
-    except Exception:
-        logger.exception("Ошибка c маркерами")
+    except Exception as e:
+        logger.exception(f"Cleaner: Ошибка c маркерами: {e}")
         return ""
 
 
 def process_message(msg: MessageMetadata):
-    logger.info("Начинаю обработку сообщений")
 
     #извлекаем текст из поля
     text = msg.text or ""
@@ -96,7 +93,7 @@ def process_message(msg: MessageMetadata):
 
     #проверка не остался после чистки текст пустой
     if not text.strip() and not msg.attached_files:
-        logger.info("Сообщение пустое -> удаляем")
+        logger.info(f"Cleaner: Сообщение {msg.chat_id}:{msg.sender_id} пустое -> удаляем")
         return None
     
     result = MessageMetadata(
@@ -105,12 +102,11 @@ def process_message(msg: MessageMetadata):
         text = text,
         attached_files = attached_files
     )
-    logger.info("Ура, сообщение обработалось")
     return result
 
 
 def clear_data(messages):
-    logger.info(f"Начата очистка {len(messages)} сообщений")
+    logger.info(f"Cleaner: Начата очистка {len(messages)} сообщений")
 
     cleaned = []
 
@@ -119,5 +115,5 @@ def clear_data(messages):
         if processed:
             cleaned.append(processed)
 
-    logger.info(f"Очистка завершена. Итог: {len(cleaned)} сообщений")
+    logger.info(f"Cleaner: Очистка завершена. Итог: {len(cleaned)} сообщений")
     return cleaned
