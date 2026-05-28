@@ -1,13 +1,16 @@
 import asyncio
+import logging
 import uuid
 from typing import List
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.http import models
-from dataclasses import asdict
-from fastembed import TextEmbedding
-from loguru import logger
+import torch
+from sentence_transformers import SentenceTransformer
+
 from src.etl.domain.interfaces import IRepository
 from src.etl.domain.value_objects import MessageMetadata
+
+logger = logging.getLogger(__name__)
 
 
 class QdrantFastEmbedRepository(IRepository):
@@ -29,11 +32,12 @@ class QdrantFastEmbedRepository(IRepository):
         """
         self._client = AsyncQdrantClient(url=url, api_key=api_key)
         self._collection_name = collection_name
-        self._model = TextEmbedding(
-            model_name="sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
-            providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
-        )
-        
+
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        logger.info(f"Используем устройство: {device.upper()}")
+        print(f"Используем устройство: {device.upper()}")
+
+        self._model = SentenceTransformer("BAAI/bge-m3", device=device)
 
     async def _ensure_collection(self):
         """Проверяет существование коллекции и создает её, если нужно"""
@@ -44,8 +48,8 @@ class QdrantFastEmbedRepository(IRepository):
                 vectors_config=models.VectorParams(
                     size=768,
                     distance=models.Distance.COSINE
-                    )
-              )
+                )
+            )
 
     async def save_batch(self, messages: List[MessageMetadata]) -> None:
         """
@@ -60,7 +64,13 @@ class QdrantFastEmbedRepository(IRepository):
         try:
             await self._ensure_collection()
             texts = [m.text if m.text else "" for m in messages]
-            embeddings = await asyncio.to_thread(lambda: list(self._model.embed(texts)))
+            embeddings = await asyncio.to_thread(lambda:
+                                                 self._model.encode(
+                                                     texts,
+                                                     batch_size=256,
+                                                     show_progress_bar=True,
+                                                     convert_to_numpy=True)
+                                                 )
 
             points = [
                 models.PointStruct(
@@ -72,10 +82,15 @@ class QdrantFastEmbedRepository(IRepository):
                         # Если текста нет, сохраняем None или пустую строку, не приводя тип вслепую
                         "text": msg.text if msg.text is not None else "",
                         "attached_files": msg.attached_files
-}
+                    }
                 )
                 for vector, msg in zip(embeddings, messages)
             ]
+
+            del embeddings
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
             self._client.upload_points(
                 collection_name=self._collection_name,
                 points=points,
@@ -84,8 +99,6 @@ class QdrantFastEmbedRepository(IRepository):
         except Exception as e:
             logger.error(f"Ошибка при сохранении данных: {e}")
             raise
-
-
 
     async def search_similar(self, query_text: str, chat_id: int, k: int) -> List[
         MessageMetadata]:
@@ -105,7 +118,11 @@ class QdrantFastEmbedRepository(IRepository):
         """
         try:
             embeddings = await asyncio.to_thread(
-                lambda: list(self._model.embed([query_text])))
+                lambda:
+                self._model.encode(
+                    [query_text],
+                    convert_to_numpy=True)
+            )
             query_vector = embeddings[0].tolist()
 
             response = await self._client.query_points(
@@ -128,3 +145,9 @@ class QdrantFastEmbedRepository(IRepository):
         except Exception as e:
             logger.error(f"Ошибка при выполнении поиска: {e}")
             raise
+
+    async def close(self):
+        del self._model
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        await self._client.close()

@@ -23,7 +23,7 @@ async def test():
     client.create_collection(
         collection_name=COLLECTION_NAME,
         vectors_config=models.VectorParams(
-            size=768,
+            size=1024,
             distance=models.Distance.COSINE
         ),
         on_disk_payload=True

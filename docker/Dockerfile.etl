@@ -1,5 +1,5 @@
 # ЭТАП 1: Сборка окружения через Pixi
-FROM ghcr.io/prefix-dev/pixi:0.41.1-noble AS build
+FROM ghcr.io/prefix-dev/pixi:latest AS build
 
 WORKDIR /app
 COPY pixi.toml pixi.loc[k] ./
@@ -8,13 +8,21 @@ COPY conda_pypi_mapping.json ./
 # Устанавливаем зависимости строго для etl-env
 RUN pixi install --environment etl-env
 
+RUN find /app/.pixi/envs/etl-env \
+      -type d \( -name "__pycache__" -o -name "tests" -o -name "test" \) \
+      -exec rm -rf {} + 2>/dev/null || true && \
+    find /app/.pixi/envs/etl-env \
+      -name "*.pyc" -o -name "*.pyo" \
+      -delete 2>/dev/null || true
+
 # Генерируем скрипт активации окружения СТРОГО в /app/shell-hook.sh
 RUN pixi shell-hook --environment etl-env > /app/shell-hook.sh
 RUN echo 'exec "$@"' >> /app/shell-hook.sh
 
 
-# ЭТАП 2: УЛЬТРАЛЕГКИЙ финальный образ
-FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
+# ЭТАП 2: Легковесный финальный образ для запуска
+#FROM nvidia/cuda:12.1.1-base-ubuntu22.04
+FROM ubuntu:22.04
 
 # Устанавливаем только самый минимум для работы системных скриптов
 RUN apt-get update && apt-get install -y --no-install-recommends \
