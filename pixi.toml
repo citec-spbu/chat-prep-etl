@@ -2,8 +2,12 @@
 name = "chat-prep-etl"
 version = "0.1.0"
 channels = ["conda-forge"]
-platforms = ["win-64", "linux-64", "osx-arm64"]
+platforms = ["linux-64"]
 conda-pypi-map = { "conda-forge" = "conda_pypi_mapping.json" }
+
+# Указываем Pixi, где искать CUDA-версию PyTorch под Linux
+[pypi-options]
+extra-index-urls = ["https://pytorch.org"]
 
 # --- 1. General ---
 [dependencies]
@@ -27,9 +31,10 @@ loguru = ">=0.7.3,<0.8"
 natasha = ">=1.6.0, <2"
 pymorphy2-dicts-ru = "*"
 telethon = "*"
-setuptools = "==69.5.1" 
+setuptools = "==69.5.1"
 qdrant-client = ">=1.18.0, <2"
-fastembed = ">=0.8.0, <0.9"
+torch = ">=2.0.0"
+sentence-transformers = "*"
 fastapi = ">=0.136.1, <0.137"
 uvicorn = ">=0.46.0, <0.47"
 
