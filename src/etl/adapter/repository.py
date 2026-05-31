@@ -42,7 +42,6 @@ class QdrantFastEmbedRepository(IRepository):
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
         logger.info(f"Используем устройство: {device.upper()}")
-        print(f"Используем устройство: {device.upper()}")
 
         self._model = SentenceTransformer("BAAI/bge-m3", device=device)
 
@@ -53,9 +52,14 @@ class QdrantFastEmbedRepository(IRepository):
             await self._client.create_collection(
                 collection_name=self._collection_name,
                 vectors_config=models.VectorParams(
-                    size=768,
-                    distance=models.Distance.COSINE
+                    size=1024,
+                    distance=models.Distance.DOT
                 )
+            )
+            await self._client.create_payload_index(
+                collection_name=self._collection_name,
+                field_name="chat_id",
+                field_schema=models.PayloadSchemaType.KEYWORD,
             )
 
     async def save_batch(self, messages: List[MessageMetadata]) -> None:
@@ -72,11 +76,10 @@ class QdrantFastEmbedRepository(IRepository):
             await self._ensure_collection()
             texts = [m.text if m.text else "" for m in messages]
             enriched_texts = [
-                (f"Контекст чата: {'' if i - 2 < 0 else texts[i - 2] + ' | '}"
-                 f"{'-' if i - 1 < 0 else texts[i - 1]}. Текущее сообщение: {texts[i]}")
+                (f"Контекст: {'' if i - 2 < 0 else texts[i - 2] + ' | '}"
+                 f"{'-' if i - 1 < 0 else texts[i - 1]}. Cообщение: {texts[i]}")
                 for i in range(len(texts))
             ]
-            print(enriched_texts)
             embeddings = await asyncio.to_thread(lambda:
                                                  self._model.encode(
                                                      enriched_texts,
@@ -100,7 +103,7 @@ class QdrantFastEmbedRepository(IRepository):
                 for vector, msg in zip(embeddings, messages)
             ]
 
-            self._client.upload_points(
+            await self._client.upload_points(
                 collection_name=self._collection_name,
                 points=points,
                 wait=True
@@ -108,7 +111,8 @@ class QdrantFastEmbedRepository(IRepository):
         except Exception as e:
             logger.error(f"Ошибка при сохранении данных: {e}")
         finally:
-            del embeddings
+            if "embeddings" in locals():
+                del embeddings
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
 
