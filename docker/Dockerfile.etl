@@ -8,13 +8,21 @@ COPY conda_pypi_mapping.json ./
 # Устанавливаем зависимости строго для etl-env
 RUN pixi install --environment etl-env
 
+# очистка кэша pixi
+RUN find /app/.pixi/envs/etl-env \
+      -type d \( -name "__pycache__" -o -name "tests" -o -name "test" \) \
+      -exec rm -rf {} + 2>/dev/null || true && \
+    find /app/.pixi/envs/etl-env \
+      -name "*.pyc" -o -name "*.pyo" \
+      -delete 2>/dev/null || true
+
 # Генерируем скрипт активации окружения СТРОГО в /app/shell-hook.sh
 RUN pixi shell-hook --environment etl-env > /app/shell-hook.sh
 RUN echo 'exec "$@"' >> /app/shell-hook.sh
 
 
 # ЭТАП 2: Легковесный финальный образ для запуска
-FROM python:3.11-slim
+FROM ubuntu:22.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl ca-certificates bash \
