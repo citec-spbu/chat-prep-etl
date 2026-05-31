@@ -4,12 +4,14 @@ import uuid
 from typing import List
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.http import models
-from dataclasses import asdict
-from fastembed import TextEmbedding
+import torch
+from sentence_transformers import SentenceTransformer
+
 from src.etl.domain.interfaces import IRepository
 from src.etl.domain.value_objects import MessageMetadata
 
 logger = logging.getLogger(__name__)
+
 
 class QdrantFastEmbedRepository(IRepository):
     """
@@ -18,6 +20,13 @@ class QdrantFastEmbedRepository(IRepository):
     Обеспечивает асинхронное сохранение и семантический поиск сообщений
     с поддержкой мультиязычности (RU/EN).
     """
+
+    _count = 0
+
+    @classmethod
+    def __get_next(cls):
+        cls._count += 1
+        return cls._count
 
     def __init__(self, url: str, api_key: str, collection_name: str):
         """
@@ -30,10 +39,12 @@ class QdrantFastEmbedRepository(IRepository):
         """
         self._client = AsyncQdrantClient(url=url, api_key=api_key)
         self._collection_name = collection_name
-        self._model = TextEmbedding(
-            model_name="sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
-        )
-        
+
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        logger.info(f"Используем устройство: {device.upper()}")
+        print(f"Используем устройство: {device.upper()}")
+
+        self._model = SentenceTransformer("BAAI/bge-m3", device=device)
 
     async def _ensure_collection(self):
         """Проверяет существование коллекции и создает её, если нужно"""
@@ -44,8 +55,8 @@ class QdrantFastEmbedRepository(IRepository):
                 vectors_config=models.VectorParams(
                     size=768,
                     distance=models.Distance.COSINE
-                    )
-              )
+                )
+            )
 
     async def save_batch(self, messages: List[MessageMetadata]) -> None:
         """
@@ -60,22 +71,35 @@ class QdrantFastEmbedRepository(IRepository):
         try:
             await self._ensure_collection()
             texts = [m.text if m.text else "" for m in messages]
-            embeddings = await asyncio.to_thread(lambda: list(self._model.embed(texts)))
+            enriched_texts = [
+                (f"Контекст чата: {'' if i - 2 < 0 else texts[i - 2] + ' | '}"
+                 f"{'-' if i - 1 < 0 else texts[i - 1]}. Текущее сообщение: {texts[i]}")
+                for i in range(len(texts))
+            ]
+            print(enriched_texts)
+            embeddings = await asyncio.to_thread(lambda:
+                                                 self._model.encode(
+                                                     enriched_texts,
+                                                     batch_size=256,
+                                                     normalize_embeddings=True,
+                                                     show_progress_bar=True,
+                                                     convert_to_numpy=True)
+                                                 )
 
             points = [
                 models.PointStruct(
-                    id=str(uuid.uuid4()),
+                    id=QdrantFastEmbedRepository.__get_next(),
                     vector=vector.tolist(),
                     payload={
                         "chat_id": str(msg.chat_id),
                         "sender_id": str(msg.sender_id),
-                        # Если текста нет, сохраняем None или пустую строку, не приводя тип вслепую
-                        "text": msg.text if msg.text is not None else "", 
+                        "text": msg.text if msg.text is not None else "",
                         "attached_files": msg.attached_files
-}
+                    }
                 )
                 for vector, msg in zip(embeddings, messages)
             ]
+
             self._client.upload_points(
                 collection_name=self._collection_name,
                 points=points,
@@ -83,9 +107,10 @@ class QdrantFastEmbedRepository(IRepository):
             )
         except Exception as e:
             logger.error(f"Ошибка при сохранении данных: {e}")
-            raise
-
-
+        finally:
+            del embeddings
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
     async def search_similar(self, query_text: str, chat_id: int, k: int) -> List[
         MessageMetadata]:
@@ -105,10 +130,15 @@ class QdrantFastEmbedRepository(IRepository):
         """
         try:
             embeddings = await asyncio.to_thread(
-                lambda: list(self._model.embed([query_text])))
+                lambda:
+                self._model.encode(
+                    [query_text],
+                    normalize_embeddings=True,
+                    convert_to_numpy=True)
+            )
             query_vector = embeddings[0].tolist()
 
-            response = await self._client.query_points(
+            top_k_search_result = await self._client.query_points(
                 collection_name=self._collection_name,
                 query=query_vector,
                 query_filter=models.Filter(
@@ -120,11 +150,37 @@ class QdrantFastEmbedRepository(IRepository):
                     ]
                 ),
                 limit=k,
-                with_payload=True
+                with_payload=False
             )
 
-            return [MessageMetadata(**hit.payload) for hit in response.points if
+            msg_ids = set()
+            for point in top_k_search_result.points:
+                msg_id = point.id
+                for i in range(4):
+                    msg_ids.add(msg_id+i)
+
+            # Делаем ОДИН запрос scroll, используя конструкцию Should (Логическое ИЛИ)
+            records, _ = await self._client.scroll(
+                collection_name=self._collection_name,
+                scroll_filter=models.Filter(
+                    must=[
+                        models.FieldCondition(
+                            key="chat_id",
+                            match=models.MatchValue(value=str(chat_id))
+                        ),
+                        models.HasIdCondition(has_id=list(msg_ids))
+                    ],
+                ),
+                limit=4*k,
+                with_payload=True
+            )
+            return [MessageMetadata(**hit.payload) for hit in records if
                     hit.payload]
         except Exception as e:
             logger.error(f"Ошибка при выполнении поиска: {e}")
-            raise
+
+    async def close(self):
+        del self._model
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        await self._client.close()
